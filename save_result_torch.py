@@ -1,6 +1,6 @@
-import equinox as eqx
+import torch
 import pickle
-import jax
+import os
 
 class Model_Result:
     def __init__(self, model, loss_history, val_history, data):
@@ -13,7 +13,7 @@ class Model_Result:
     def save(self):
         """
         Saves:
-        - model parameters using Equinox
+        - model parameters using torch
         - loss_history, val_history, data, model_class, model_hparams using pickle
         """
 
@@ -24,8 +24,10 @@ class Model_Result:
             "modes": self.model.modes,
             "width": self.model.width,
             "activation": self.model.activation,
-            "n_blocks": self.model.n_blocks}
-        
+            "n_blocks": self.model.n_blocks,
+            "padding": self.model.padding
+        }
+
         for key, val in model_hparams.items():
             if callable(val):
                 model_hparams[key] = val.__name__
@@ -34,21 +36,19 @@ class Model_Result:
         filename_prefix = f"{self.data}_{self.model_class.__name__}_"
         for key in model_hparams:
             val = model_hparams[key]
-            # Convert function names to strings if needed
-            if callable(val):
-                val = val.__name__
             filename_prefix += f"{key}{val}_"
 
-        model_filename = f"trained_models/{filename_prefix}_model.eqx"
+        os.makedirs("trained_models", exist_ok=True)
+        model_filename = f"trained_models/{filename_prefix}_model.pt"
 
-        # Save model parameters
-        eqx.tree_serialise_leaves(model_filename, self.model)
+        # Save model parameters using torch
+        torch.save(self.model.state_dict(), model_filename)
 
         other_data = {
             "loss_history": self.loss_history,
             "val_history": self.val_history,
             "data": self.data,
-            "model_class": self.model.__class__,
+            "model_class_name": self.model_class.__name__,
             "model_hparams": model_hparams,
             "model_filename": model_filename,
         }
@@ -57,12 +57,13 @@ class Model_Result:
             pickle.dump(other_data, f)
 
     @classmethod
-    def load(cls, filename_prefix):
+    def load(cls, filename_prefix, model_class):
         """
-        Loads Model_Result without requiring a model template by using saved hyperparameters.
+        Loads Model_Result by using saved hyperparameters and model class.
 
         Args:
             filename_prefix (str): prefix for saved files
+            model_class (class): class of the model to reconstruct
 
         Returns:
             Model_Result instance with loaded data and reconstructed model.
@@ -72,20 +73,21 @@ class Model_Result:
 
         model_hparams = other_data["model_hparams"]
         model_filename = other_data["model_filename"]
-        model_class = other_data["model_class"]
 
         activation = model_hparams['activation']
         if activation is not None:
             if activation == 'relu':
-                model_hparams['activation'] = jax.nn.relu
+                model_hparams['activation'] = torch.nn.functional.relu
             elif activation == 'tanh':
-                model_hparams['activation'] = jax.nn.tanh
+                model_hparams['activation'] = torch.tanh
+            elif activation == 'gelu':
+                model_hparams['activation'] = torch.nn.functional.gelu
 
         # Reconstruct model template
-        model_template = model_class(**model_hparams)
+        model = model_class(**model_hparams)
 
         # Load model parameters
-        model = eqx.tree_deserialise_leaves(model_filename, model_template)
+        model.load_state_dict(torch.load(model_filename, map_location='cpu'))
 
         return cls(
             model=model,
