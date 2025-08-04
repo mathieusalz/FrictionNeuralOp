@@ -1,0 +1,14 @@
+[I 2025-08-04 12:48:18,965] Trial 537 finished with value: 0.000980278467371439 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 64, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.007850006997739207, 'padding': 9}. Best is trial 537 with value: 0.000980278467371439.
+[Trial 537] Train loss: 7.084e-04, Val loss: 8.444e-04, Overfit gap: 1.359e-04
+[I 2025-08-04 12:52:59,881] Trial 661 finished with value: 0.0009444697352591902 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 64, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.009187989361687444, 'padding': 9}. Best is trial 661 with value: 0.0009444697352591902.
+[Trial 661] Train loss: 6.626e-04, Val loss: 8.035e-04, Overfit gap: 1.409e-04
+[I 2025-08-04 12:54:33,703] Trial 702 finished with value: 0.0008784411135517681 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 64, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.008050885972215609, 'padding': 9}. Best is trial 702 with value: 0.0008784411135517681.
+[Trial 702] Train loss: 6.074e-04, Val loss: 7.429e-04, Overfit gap: 1.355e-04
+[I 2025-08-04 12:56:46,962] Trial 761 finished with value: 0.0008946564097035056 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 64, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.00863428059413483, 'padding': 9}. Best is trial 702 with value: 0.0008784411135517681.
+[Trial 761] Train loss: 6.635e-04, Val loss: 7.791e-04, Overfit gap: 1.156e-04
+[I 2025-08-04 13:00:09,037] Trial 852 finished with value: 0.0009782222332432866 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 64, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.00797058659124699, 'padding': 9}. Best is trial 702 with value: 0.0008784411135517681.
+[Trial 852] Train loss: 7.050e-04, Val loss: 8.416e-04, Overfit gap: 1.366e-04
+[I 2025-08-04 13:03:11,769] Trial 932 finished with value: 0.0009461437827364231 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 32, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.009979167243139676, 'padding': 9}. Best is trial 702 with value: 0.0008784411135517681.
+[Trial 932] Train loss: 6.677e-04, Val loss: 8.069e-04, Overfit gap: 1.392e-04
+[I 2025-08-04 13:03:37,394] Trial 943 finished with value: 0.0009863056766334921 and parameters: {'width_NN': 64, 'depth_NN': 4, 'modes': 32, 'blocks': 4, 'block_act': <function mish at 0x7f4f442b4ea0>, 'lift_act': None, 'width': 32, 'lr': 0.009078685421584212, 'padding': 9}. Best is trial 702 with value: 0.0008784411135517681.
+[Trial 943] Train loss: 7.365e-04, Val loss: 8.614e-04, Overfit gap: 1.249e-04

@@ -1,107 +1,3 @@
-# import torch
-# import torch.nn as nn
-# import torch.fft
-# from typing import Callable, List, Union
-
-# class SpectralConv1d(nn.Module):
-#     def __init__(self, in_channels, out_channels, modes):
-#         super().__init__()
-#         self.in_channels = in_channels
-#         self.out_channels = out_channels
-#         self.modes = modes
-
-#         scale = 1.0 / (in_channels * out_channels)
-#         self.real_weights = nn.Parameter(
-#             torch.rand(in_channels, out_channels, modes) * 2 * scale - scale
-#         )
-#         self.imag_weights = nn.Parameter(
-#             torch.rand(in_channels, out_channels, modes) * 2 * scale - scale
-#         )
-
-#     def complex_mult1d(self, x_hat, w):
-#         # x_hat: (in_channels, modes), w: (in_channels, out_channels, modes)
-#         return torch.einsum("iM,ioM->oM", x_hat, w)
-
-#     def forward(self, x):
-#         # x: (batch, channels, spatial_points)
-#         batchsize, channels, spatial_points = x.shape
-
-#         x_hat = torch.fft.rfft(x, dim=-1)
-#         x_hat_under_modes = x_hat[:, :, :self.modes]
-
-#         weights = torch.complex(self.real_weights,self.imag_weights)
-#         out_hat_under_modes = torch.einsum(
-#             "bim, iom -> bom", x_hat_under_modes, weights
-#         )
-
-#         out_hat = torch.zeros(
-#             batchsize, self.out_channels, x_hat.shape[-1],
-#             dtype=torch.cfloat, device=x.device
-#         )
-#         out_hat[:, :, :self.modes] = out_hat_under_modes
-
-#         out = torch.fft.irfft(out_hat, n=spatial_points, dim=-1)
-#         return out
-
-
-# class FNOBlock1d(nn.Module):
-#     def __init__(self, in_channels, out_channels, modes, activation=None):
-#         super().__init__()
-#         self.activation = activation
-#         self.spectral_conv = SpectralConv1d(in_channels, out_channels, modes)
-#         self.bypass_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
-
-#     def forward(self, x):
-#         sc = self.spectral_conv(x)
-#         bc = self.bypass_conv(x)
-#         if self.activation is None:
-#             return sc + bc
-#         else:
-#             return self.activation(sc + bc)
-
-
-# class FNO1d(nn.Module):
-#     def __init__(
-#         self,
-#         in_channels,
-#         out_channels,
-#         modes,
-#         width,
-#         activation=None,
-#         n_blocks=4,
-#         padding=0,
-#     ):
-#         super().__init__()
-#         self.in_channels = in_channels
-#         self.out_channels = out_channels
-#         self.modes = modes
-#         self.width = width
-#         self.activation = activation
-#         self.n_blocks = n_blocks
-#         self.padding = padding
-
-#         self.lifting = nn.Conv1d(in_channels, width, kernel_size=1, bias=False)
-
-#         self.fno_blocks = nn.ModuleList([
-#             FNOBlock1d(width, width, modes, activation)
-#             for _ in range(n_blocks)
-#         ])
-
-#         self.projection = nn.Conv1d(width, out_channels, kernel_size=1)
-
-#     def forward(self, x):
-#         if self.padding != 0:
-#             x = torch.nn.functional.pad(x, (self.padding, self.padding), mode='constant', value=0)
-
-#         x = self.lifting(x)
-#         for fno_block in self.fno_blocks:
-#             x = fno_block(x)
-#         x = self.projection(x)
-
-#         if self.padding != 0:
-#             x = x[:, :, self.padding:-self.padding]
-#         return x
-
 import torch
 import torch.nn as nn
 import torch.fft
@@ -202,6 +98,8 @@ class FNO1d(nn.Module):
         self.lifting_activation = lifting_activation
         self.n_blocks = n_blocks
         self.NN = NN
+        self.NN_params = NN_params
+        self.bias = bias
         self.padding = padding
 
         if not NN:

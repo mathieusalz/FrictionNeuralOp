@@ -1,0 +1,6 @@
+trained_models/
+VENV/
+*.out
+!spec/*.json
+__pycache__/
+*.png
