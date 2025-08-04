@@ -7,41 +7,34 @@ from FNO_torch import FNO1d
 import matplotlib.pyplot as plt
 
 training_params = {"model_type": "dual",
-                   "pretrain": "load",
-                   "lr": 1e-2,
-                   "lr_state_factor": 0}
+                   "pretrain": False,
+                   "lr": 2e-3,
+                   "lr_state_factor": 1}
 
-best_heal_params = {'width_NN': 8,
+best_heal_params = {'width_NN': 64,
                      'depth_NN': 8,
                      'mode': 12,
-                     'blocks': 4,
-                     'lift_act': torch.nn.functional.gelu,
-                     'block_act': torch.nn.functional.gelu,
-                     'width': 8,
-                     'padding': 9,
-                     'lr': 1e-2}
-
-best_state_params = {'width_NN': 256,
-                     'depth_NN': 1,
-                     'mode': 64,
-                     'blocks': 4,
-                     'lift_act': torch.nn.functional.gelu,
+                     'blocks': 6,
+                     'lift_act': torch.nn.functional.tanh,
                      'block_act': torch.nn.functional.mish,
                      'width': 32,
-                     'padding': 9,
-                     'lr': 5e-3}
+                     'padding': 18}
+
+best_state_params = {'width_NN': 256,
+                     'depth_NN': 4,
+                     'mode': 64,
+                     'blocks': 2,
+                     'lift_act': torch.nn.functional.mish,
+                     'block_act': None,
+                     'width': 64,
+                     'padding': 18}
 
 config = {**training_params, **combine_with_suffix(best_heal_params, best_state_params)}
 
 if __name__ == "__main__":
     data, device = prepare_data("dual")
 
-    # checkpoint = torch.load('state_model.pth', map_location=device)
-    # fno_state_params = checkpoint['model_params']
-    # fno_state = FNO1d(**fno_state_params).to(device)
-    # fno_state.load_state_dict(checkpoint['model_state_dict'])
-
-    #model, data = train_model(config, data, device, save_results = True, total_epochs= 100)
+    model, data = train_model(config, data, device, save_results = True, total_epochs= 100)
 
     # torch.save({
     #     'model_state_dict': model.state_dict(),
@@ -60,7 +53,7 @@ if __name__ == "__main__":
     #     }
     # }, 'state_model.pth')
     
-    # plots(fno_state, data, device)    
+    plots(model, data, device)    
 
 
 

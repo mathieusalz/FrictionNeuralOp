@@ -19,11 +19,11 @@ def prepare_data(model_type, state_only = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if not state_only:
-        feature = np.genfromtxt('friction_data/features_AgingLaw_v2.csv', delimiter=',')[:, np.newaxis, :]
-        target = np.genfromtxt('friction_data/targets_AgingLaw_v2.csv', delimiter=',')[:, np.newaxis, :]
+        feature = np.genfromtxt('data/friction_data/features_AgingLaw_v2.csv', delimiter=',')[:, np.newaxis, :]
+        target = np.genfromtxt('data/friction_data/targets_AgingLaw_v2.csv', delimiter=',')[:, np.newaxis, :]
     else:
-        feature = np.genfromtxt('friction_data/features_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
-        target = np.genfromtxt('friction_data/targets_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
+        feature = np.genfromtxt('data/friction_data/features_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
+        target = np.genfromtxt('data/friction_data/targets_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
 
     train_x = feature[:750, :, :]
     train_y = target[:750, :, :]
@@ -46,8 +46,8 @@ def prepare_data(model_type, state_only = False):
         test_x_norm_heal = x_heal_transform(test_y)
         test_x_norm = torch.cat([test_x_norm_state, test_x_norm_heal], dim=1)
 
-        feature_state = np.genfromtxt('friction_data/features_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
-        target_state = np.genfromtxt('friction_data/targets_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
+        feature_state = np.genfromtxt('data/friction_data/features_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
+        target_state = np.genfromtxt('data/friction_data/targets_AgingLaw_NoHealing.csv', delimiter=',')[:, np.newaxis, :]
 
         train_x_state = feature_state[:750, :, :]
         train_y_state = target_state[:750, :, :]

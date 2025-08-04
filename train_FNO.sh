@@ -10,4 +10,4 @@
 module purge
 module load gcc python cuda cudnn/8.9.7.29-12 openmpi py-torch
 
-srun VENV/bin/python hyperparameter_tuning.py
+srun VENV/bin/python train_FNO.py
