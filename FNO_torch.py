@@ -87,7 +87,7 @@ class FNO1d(nn.Module):
         padding=0,
         NN=False,
         NN_params=None,
-        bias=False
+        bias=True
     ):
         super().__init__()
         self.in_channels = in_channels

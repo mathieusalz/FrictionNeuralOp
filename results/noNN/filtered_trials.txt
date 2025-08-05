@@ -1,0 +1,50 @@
+[I 2025-08-05 00:01:16,988] Trial 1751 finished with value: 0.01992579735815525 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0006595886440174905, 'padding': 18}. Best is trial 1751 with value: 0.01992579735815525.
+[Trial 1751] Train loss: 2.156e-02, Val loss: 1.993e-02, Overfit gap: -1.630e-03
+[I 2025-08-05 00:04:03,871] Trial 1809 finished with value: 0.01370441447943449 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0008977835590667818, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1809] Train loss: 1.467e-02, Val loss: 1.370e-02, Overfit gap: -9.662e-04
+[I 2025-08-05 00:04:09,633] Trial 1811 finished with value: 0.014402628876268864 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0009975325413056656, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1811] Train loss: 1.600e-02, Val loss: 1.440e-02, Overfit gap: -1.599e-03
+[I 2025-08-05 00:05:12,922] Trial 1833 finished with value: 0.01961954403668642 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0009836062307117532, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1833] Train loss: 1.848e-02, Val loss: 1.905e-02, Overfit gap: 5.690e-04
+[I 2025-08-05 00:05:50,398] Trial 1846 finished with value: 0.01663706824183464 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0008880918518298435, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1846] Train loss: 1.874e-02, Val loss: 1.664e-02, Overfit gap: -2.099e-03
+[I 2025-08-05 00:06:24,915] Trial 1858 finished with value: 0.019953009051581223 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0008953558764857748, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1858] Train loss: 1.771e-02, Val loss: 1.883e-02, Overfit gap: 1.122e-03
+[I 2025-08-05 00:07:22,551] Trial 1878 finished with value: 0.019723559108873207 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0011809869113987151, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1878] Train loss: 1.910e-02, Val loss: 1.941e-02, Overfit gap: 3.142e-04
+[I 2025-08-05 00:09:06,251] Trial 1914 finished with value: 0.01885169434050719 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.00109447613834775, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1914] Train loss: 1.766e-02, Val loss: 1.826e-02, Overfit gap: 5.941e-04
+[I 2025-08-05 00:10:26,944] Trial 1942 finished with value: 0.019125426188111305 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0009284756212564199, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1942] Train loss: 2.003e-02, Val loss: 1.913e-02, Overfit gap: -9.018e-04
+[I 2025-08-05 00:11:47,740] Trial 1970 finished with value: 0.01941428892314434 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0009132472301196044, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 1970] Train loss: 2.053e-02, Val loss: 1.941e-02, Overfit gap: -1.113e-03
+[I 2025-08-05 00:13:45,968] Trial 2011 finished with value: 0.01947367563843727 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.000850416817720325, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2011] Train loss: 2.055e-02, Val loss: 1.947e-02, Overfit gap: -1.079e-03
+[I 2025-08-05 00:15:52,953] Trial 2055 finished with value: 0.019774751737713814 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0008614039417936275, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2055] Train loss: 2.127e-02, Val loss: 1.977e-02, Overfit gap: -1.498e-03
+[I 2025-08-05 00:17:59,974] Trial 2099 finished with value: 0.020194986059019964 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0012275085912118353, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2099] Train loss: 1.758e-02, Val loss: 1.889e-02, Overfit gap: 1.307e-03
+[I 2025-08-05 00:37:36,213] Trial 2511 finished with value: 0.021671189926564693 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0011925513910790977, 'padding': 9}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2511] Train loss: 1.802e-02, Val loss: 1.985e-02, Overfit gap: 1.826e-03
+[I 2025-08-05 00:38:33,062] Trial 2532 finished with value: 0.02058520137021939 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0012471737468823481, 'padding': 9}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2532] Train loss: 1.742e-02, Val loss: 1.900e-02, Overfit gap: 1.582e-03
+[I 2025-08-05 00:41:42,427] Trial 2601 finished with value: 0.017884351313114166 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function tanh at 0x7f6e7d1b8e00>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0012371244220531767, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2601] Train loss: 1.929e-02, Val loss: 1.788e-02, Overfit gap: -1.402e-03
+[I 2025-08-05 00:51:51,916] Trial 2820 finished with value: 0.01663063916688164 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.001135527754026693, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2820] Train loss: 1.626e-02, Val loss: 1.644e-02, Overfit gap: 1.872e-04
+[I 2025-08-05 00:52:10,224] Trial 2827 finished with value: 0.018585611134767532 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function mish at 0x7f6e7d1b9080>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0011443550298953927, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2827] Train loss: 2.020e-02, Val loss: 1.859e-02, Overfit gap: -1.610e-03
+[I 2025-08-05 00:52:24,783] Trial 2832 finished with value: 0.02107426446552078 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <function mish at 0x7f6e7d1b9080>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0011292227649713875, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2832] Train loss: 1.825e-02, Val loss: 1.966e-02, Overfit gap: 1.410e-03
+[I 2025-08-05 00:54:10,578] Trial 2870 finished with value: 0.02017404915144046 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0011793099689209143, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2870] Train loss: 1.728e-02, Val loss: 1.873e-02, Overfit gap: 1.448e-03
+[I 2025-08-05 00:54:28,021] Trial 2876 finished with value: 0.016620900481939316 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0013464026742291062, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2876] Train loss: 1.845e-02, Val loss: 1.662e-02, Overfit gap: -1.834e-03
+[I 2025-08-05 00:54:45,441] Trial 2882 finished with value: 0.01764107495546341 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0014080465828051523, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2882] Train loss: 1.272e-02, Val loss: 1.518e-02, Overfit gap: 2.462e-03
+[I 2025-08-05 00:55:38,278] Trial 2901 finished with value: 0.021472655547161896 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.001286642222026515, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2901] Train loss: 1.762e-02, Val loss: 1.955e-02, Overfit gap: 1.924e-03
+[I 2025-08-05 00:58:10,478] Trial 2956 finished with value: 0.020926602029552065 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.001410667062166943, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2956] Train loss: 1.542e-02, Val loss: 1.817e-02, Overfit gap: 2.755e-03
+[I 2025-08-05 00:59:00,585] Trial 2974 finished with value: 0.020640310055265825 and parameters: {'modes': 12, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0020701950805030256, 'padding': 18}. Best is trial 1809 with value: 0.01370441447943449.
+[Trial 2974] Train loss: 1.743e-02, Val loss: 1.903e-02, Overfit gap: 1.607e-03

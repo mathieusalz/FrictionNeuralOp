@@ -2,26 +2,38 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from FNO_torch import FNO1d, dual_FNO
+from postprocess_utils import load_model
 
-def single_model_setup(config, device):
+def model_setup(config, device, NN = False):
 
-    model = FNO1d(
-            in_channels=1,
-            out_channels=1,
-            modes= config['modes'],
-            width= config['width'],
-            block_activation=config['block_act'],
-            lifting_activation=config['lift_act'],
-            n_blocks=config['n_blocks'],
-            padding=config['padding'],
-            NN=True,
-            NN_params={"width": config['width_NN'], "depth": config['depth_NN']}
-            ).to(device)
-
-    return model    
-
-def dual_model_setup(config, device):
-    fno_heal = FNO1d(
+    if config['model_type'] == 'single':
+        if NN:
+            model = FNO1d(
+                    in_channels=1,
+                    out_channels=1,
+                    modes= config['mode'],
+                    width= config['width'],
+                    block_activation=config['block_act'],
+                    lifting_activation=config['lift_act'],
+                    n_blocks=config['blocks'],
+                    padding=config['padding'],
+                    NN=True,
+                    NN_params={"width": config['width_NN'], "depth": config['depth_NN']}
+                    ).to(device)
+        else:
+            model = FNO1d(
+                in_channels=2,
+                out_channels=1,
+                modes= config['mode'],
+                width= config['width'],
+                block_activation=config['block_act'],
+                lifting_activation=config['lift_act'],
+                n_blocks=config['blocks'],
+                padding=config['padding'],
+                ).to(device)
+    
+    else:
+        fno_heal = FNO1d(
             in_channels=1,
             out_channels=1,
             modes=config["mode_heal"],
@@ -34,20 +46,20 @@ def dual_model_setup(config, device):
             NN_params={"width": config["width_NN_heal"], "depth": config["depth_NN_heal"]}
         ).to(device)
 
-    fno_state = FNO1d(
-        in_channels=1,
-        out_channels=1,
-        modes=config["mode_state"],
-        width=config["width_heal"],
-        block_activation=config["block_act_state"],
-        lifting_activation=config["lift_act_state"],
-        n_blocks=config["blocks_state"],
-        padding=config["padding_state"],
-        NN=True,
-        NN_params={"width": config["width_NN_state"], "depth": config["depth_NN_state"]}
-    ).to(device)
+        fno_state = FNO1d(
+            in_channels=1,
+            out_channels=1,
+            modes=config["mode_state"],
+            width=config["width_heal"],
+            block_activation=config["block_act_state"],
+            lifting_activation=config["lift_act_state"],
+            n_blocks=config["blocks_state"],
+            padding=config["padding_state"],
+            NN=True,
+            NN_params={"width": config["width_NN_state"], "depth": config["depth_NN_state"]}
+        ).to(device)
 
-    model = dual_FNO(fno_heal, fno_state).to(device)
+        model = dual_FNO(fno_heal, fno_state).to(device)
 
     return model
 
@@ -82,43 +94,35 @@ def train_loop(model, train_loader, val_x, val_y,
 
         return loss_history, val_loss_history
 
-def train_model(config, data, device="cuda", save_results = False, total_epochs = 80):
+def pretraining(model, data, device, config, criterion, save_results):
+    if config['pretrain'] == True:
+        print('PRETRAINING')
+        train_loader_state = data['train_loader_state']
+        test_x_state = data['test_x_norm_state']
+        test_y_state = data['test_y_norm_state']
+
+        optimizer_state = optim.Adam(model.FNO_state.parameters(), lr=config['lr'])
+        scheduler_state = optim.lr_scheduler.ExponentialLR(optimizer_state, gamma=0.95)
+
+        loss_history_state, val_loss_history_state = train_loop(model.FNO_state, train_loader_state, test_x_state, test_y_state,
+                                                                optimizer_state, scheduler_state, config['pretrain_epochs'], 
+                                                                criterion, save_results)
+
+        data['loss_history_state'] = loss_history_state
+        data['val_loss_history_state'] = val_loss_history_state
+
+    elif config['pretrain'] == 'load':
+        print("LOADING PRETRAINED")
+        fno_state = load_model("state_model", device)
+        model.FNO_state = fno_state
+
+def train_model(config, model, data, device="cuda", save_results = False, total_epochs = 80, NN = False):
     criterion = nn.MSELoss()
 
     if config['model_type'] == 'dual':
-        model = dual_model_setup(config, device)
-    else: 
-        model = single_model_setup(config, device)
-        
-    if 'pretrain' in config:
-        if config['pretrain'] == True:
-            print('PRETRAINING')
-            train_loader_state = data['train_loader_state']
-            test_x_state = data['test_x_norm_state']
-            test_y_state = data['test_y_norm_state']
 
-            optimizer_state = optim.Adam(model.FNO_state.parameters(), lr=config['lr'])
-            scheduler_state = optim.lr_scheduler.ExponentialLR(optimizer_state, gamma=0.95)
-
-            loss_history_state, val_loss_history_state = train_loop(model.FNO_state, train_loader_state, test_x_state, test_y_state,
-                                                                    optimizer_state, scheduler_state, config['pretrain_epochs'], 
-                                                                    criterion, save_results)
-
-            data['loss_history_state'] = loss_history_state
-            data['val_loss_history_state'] = val_loss_history_state
-
-        elif config['pretrain'] == 'load':
-            print("LOADING PRETRAINED")
-            checkpoint = torch.load('state_model.pth', map_location=device)
-            fno_state_params = checkpoint['model_params']
-            fno_state = FNO1d(**fno_state_params).to(device)
-            fno_state.load_state_dict(checkpoint['model_state_dict'])
-            model.FNO_state = fno_state
-
-    loss_history = []
-    val_loss_history = []
-
-    if config['model_type'] == 'dual':
+        if 'pretrain' in config:
+            pretraining(model, data, device, config, criterion, save_results)
 
         optimizer = optim.Adam([
             {"params": model.FNO_state.parameters(), "lr": config["lr"] * config["lr_state_factor"]},
@@ -129,14 +133,14 @@ def train_model(config, data, device="cuda", save_results = False, total_epochs 
             print("Not Training Pretrained")
             for param in model.FNO_state.parameters():
                 param.requires_grad = False
-    else:
-        optimizer = optim.Adam(model.parameters(), lr=config["lr"])
 
+    else: 
+        optimizer = optim.Adam(model.parameters(), lr=config["lr"])
+        
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
 
-    train_loader = data['train_loader']
-    test_x = data['test_x_norm']
-    test_y = data['test_y_norm']
+    loss_history, val_loss_history = [], []
+    train_loader, test_x, test_y = data['train_loader'], data['test_x_norm'], data['test_y_norm']
 
     loss_history, val_loss_history = train_loop(model, train_loader, test_x, test_y,
                                                 optimizer, scheduler, total_epochs, 
@@ -144,4 +148,3 @@ def train_model(config, data, device="cuda", save_results = False, total_epochs 
 
     data['loss_history'] = loss_history
     data['val_loss_history'] = val_loss_history
-    return model, data

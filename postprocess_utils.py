@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from FNO_torch import FNO1d, dual_FNO
+import torch
 
 def plot_results(model, x, y, name):
     fig, axes = plt.subplots(10, 10, figsize=(20, 20))
@@ -79,3 +80,29 @@ def plots(model, data, device):
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for legend on top
         plt.savefig("train_contributions.png", dpi=300, bbox_inches='tight')
         plt.close()
+
+def save_model(model, name = 'model'):
+
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'model_params': {
+            'in_channels': model.in_channels,
+            'out_channels': model.out_channels,
+            'modes': model.modes,
+            'width': model.width,
+            'block_activation': model.block_activation,
+            'lifting_activation': model.lifting_activation,
+            'n_blocks': model.n_blocks,
+            'padding': model.padding,
+            'NN': model.NN,
+            'NN_params': model.NN_params if model.NN else None,
+            'bias': model.lifting.bias is not None if not model.NN else False,
+        }
+    }, f'{name}.pth')
+
+def load_model(model_name, device):
+    checkpoint = torch.load(f'{model_name}.pth', map_location=device)
+    model_params = checkpoint['model_params']
+    model = FNO1d(**model_params).to(device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    return model

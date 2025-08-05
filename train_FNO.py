@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from train_utils import train_model
+from train_utils import train_model, model_setup
 from preprocess_utils import prepare_data, combine_with_suffix
 from postprocess_utils import plots, plot_results, plot_loss
 from FNO_torch import FNO1d
@@ -29,29 +29,22 @@ best_state_params = {'width_NN': 256,
                      'width': 64,
                      'padding': 18}
 
-config = {**training_params, **combine_with_suffix(best_heal_params, best_state_params)}
+best_single_model = {"model_type": "single",
+                     "mode": 64,
+                     "blocks": 8,
+                     "lift_act": torch.nn.functional.gelu,
+                     "block_act": torch.nn.functional.tanh,
+                     "width": 8,
+                     "lr": 2e-3,
+                     "padding": 9}
+
+#config = {**training_params, **combine_with_suffix(best_heal_params, best_state_params)}
 
 if __name__ == "__main__":
     data, device = prepare_data("dual")
+    model = model_setup(best_single_model, device, NN= False)
 
-    model, data = train_model(config, data, device, save_results = True, total_epochs= 100)
-
-    # torch.save({
-    #     'model_state_dict': model.state_dict(),
-    #     'model_params': {
-    #         'in_channels': model.in_channels,
-    #         'out_channels': model.out_channels,
-    #         'modes': model.modes,
-    #         'width': model.width,
-    #         'block_activation': model.block_activation,
-    #         'lifting_activation': model.lifting_activation,
-    #         'n_blocks': model.n_blocks,
-    #         'padding': model.padding,
-    #         'NN': model.NN,
-    #         'NN_params': model.NN_params if model.NN else None,  # <- save original params directly
-    #         'bias': model.lifting.bias is not None if not model.NN else False,
-    #     }
-    # }, 'state_model.pth')
+    train_model(best_single_model, model, data, device, save_results = True, total_epochs= 100, NN = False)
     
     plots(model, data, device)    
 

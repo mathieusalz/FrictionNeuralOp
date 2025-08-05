@@ -55,11 +55,9 @@ def objective_dual(trial,data):
 
     return objective_value
 
-def objective_single(trial,data):
+def objective_single(trial,data, NN = False):
     config = {
     "model_type": "single",
-    "width_NN":  trial.suggest_categorical("width_NN", [8, 64, 256, 512]),
-    "depth_NN":  trial.suggest_categorical("depth_NN", [1,4,8]),
     "modes":      trial.suggest_categorical("modes", [12,32,64]),
     "n_blocks":    trial.suggest_categorical("blocks", [1,4,8]),
     "block_act": trial.suggest_categorical(
@@ -73,24 +71,26 @@ def objective_single(trial,data):
     "padding":  trial.suggest_categorical("padding", [0,9,18])
     }
 
-    _, data_out = train_model(config, data, device)
+    if NN:
+        config["width_NN"] =  trial.suggest_categorical("width_NN", [8, 64, 256, 512])
+        config["depth_NN"] =  trial.suggest_categorical("depth_NN", [1,4,8])
+
+    _, data_out = train_model(config, data, device, NN)
     val_loss = data_out["val_loss_history"][-1]
     train_loss = data_out["loss_history"][-1]
     print(f"[Trial {trial.number}] Train loss: {train_loss:.3e}, Val loss: {val_loss:.3e}, Overfit gap: {val_loss - train_loss:.3e}", flush = True)
 
-    # Optional overfitting penalty (e.g. L2 gap penalty)
-    penalty_lambda = 1.0  # You can tune this
+    penalty_lambda = 1.0 
     objective_value = val_loss + penalty_lambda * max(val_loss - train_loss, 0)
 
     return objective_value
 
 
 if __name__ == "__main__":
-    data, device = prepare_data(model_type = 'dual', 
-                                state_only = False)
+    data, device = prepare_data(model_type = 'dual')
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(lambda trial: objective_dual(trial, data), n_trials=500)
+    study.optimize(lambda trial: objective_single(trial, data, NN=False), n_trials=1000)
 
     print("Best trial:")
     print(study.best_trial)

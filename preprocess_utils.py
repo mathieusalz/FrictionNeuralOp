@@ -11,7 +11,7 @@ def x_state_transform(x):
 def x_heal_transform(x):
     return (torch.abs(torch.Tensor(x) - 1e-8) < 1e-12).float()
 
-def prepare_data(model_type, state_only = False):
+def prepare_data(model_type, state_only = False, ):
 
     if model_type == 'dual' and state_only:
         raise ValueError("Model cannot be dual and use only state data") 

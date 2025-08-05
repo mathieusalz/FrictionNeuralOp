@@ -1,0 +1,6 @@
+[I 2025-08-05 11:48:47,577] Trial 475 finished with value: 0.011224039597436786 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <function tanh at 0x7fe501ab4e00>, 'width': 8, 'lr': 0.0020227380181529757, 'padding': 9}. Best is trial 475 with value: 0.011224039597436786.
+[Trial 475] Train loss: 6.337e-03, Val loss: 8.781e-03, Overfit gap: 2.443e-03
+[I 2025-08-05 11:55:57,274] Trial 645 finished with value: 0.011004244443029165 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <built-in function gelu>, 'width': 8, 'lr': 0.0020068385894194594, 'padding': 9}. Best is trial 645 with value: 0.011004244443029165.
+[Trial 645] Train loss: 7.082e-03, Val loss: 9.043e-03, Overfit gap: 1.961e-03
+[I 2025-08-05 12:09:15,222] Trial 943 finished with value: 0.011039670867224533 and parameters: {'modes': 64, 'blocks': 8, 'block_act': <built-in function gelu>, 'lift_act': <function sigmoid at 0x7fe501ab4ea0>, 'width': 8, 'lr': 0.0020400953605738768, 'padding': 18}. Best is trial 645 with value: 0.011004244443029165.
+[Trial 943] Train loss: 6.248e-03, Val loss: 8.644e-03, Overfit gap: 2.396e-03
