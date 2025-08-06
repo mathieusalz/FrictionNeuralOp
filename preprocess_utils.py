@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 
-def x_full_transform(x):
+def x_log_transform(x):
     return torch.Tensor(np.log(np.log(1/x)))
 
 def x_state_transform(x):
@@ -30,10 +30,10 @@ def prepare_data(data_config, device):
     test_norm_components = []
     
     if data_config['log_norm']:
-        train_x_norm_full = x_full_transform(train_x)
-        x_max = train_x_norm_full.max()
+        train_x_norm_log = x_log_transform(train_x)
+        x_max = train_x_norm_log.max()
         train_x_norm_log /= x_max
-        test_x_norm_log = x_full_transform(test_x) / x_max
+        test_x_norm_log = x_log_transform(test_x) / x_max
         train_norm_components.append(train_x_norm_log)
         test_norm_components.append(test_x_norm_log)
         data['train_x_norm_log'] = train_x_norm_log

@@ -58,7 +58,7 @@ class FNOBlock1d(nn.Module):
                  in_channels : int, 
                  out_channels : int, 
                  modes : int, 
-                 activation : nn.Module =  nn.Identity()):
+                 activation : nn.Module = nn.Identity()):
         """
         Initializes a single Fourier Neural Operator (FNO) block for 1D data.
 

@@ -54,8 +54,8 @@ def plots(model, data, device):
     if isinstance(model, dual_FNO):
         if 'loss_history_state' in data:
             plot_loss(data['loss_history_state'], data['val_loss_history_state'], "loss_plot_pretrain.png")
-        plot_results(model.FNO_state,data['train_x_norm_state'], data['train_y_norm_state'], 'state_train.png')
-        plot_results(model.FNO_state,data['test_x_norm_state'], data['test_y_norm_state'], 'state_test.png')
+        #plot_results(model.FNO_state,data['train_x_norm_state'], data['train_y_norm_state'], 'state_train.png')
+        #plot_results(model.FNO_state,data['test_x_norm_state'], data['test_y_norm_state'], 'state_test.png')
         
         fig, axes = plt.subplots(6, 6, figsize=(20, 20))
         axes = axes.flatten()

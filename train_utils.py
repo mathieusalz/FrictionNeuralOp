@@ -69,7 +69,7 @@ def model_setup(config : dict,
     return model
 
 def lr_lambda(step):
-    return 0.95 ** (step // 1000)
+    return 0.8 ** (step // 1000)
 
 def train_loop(model, train_loader, val_x, val_y, 
                optimizer, scheduler, epochs, 
