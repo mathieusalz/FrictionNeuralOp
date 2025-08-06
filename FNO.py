@@ -56,22 +56,47 @@ class FNOBlock1d(nn.Module):
         out = sc + bc
         return out if self.activation is None else self.activation(out)
 
-
 class Projection_NN(nn.Module):
-    def __init__(self, input_dim, output_dim, width, depth, activation=torch.tanh):
+    def __init__(self, input_dim, output_dim, width, depth, activation):
         super().__init__()
         self.activation = activation
+        self.width = width
+        self.output_dim = output_dim
+
         layers = [nn.Linear(input_dim, width)]
         for _ in range(depth - 1):
             layers.append(nn.Linear(width, width))
+            layers.append(activation)
+
         layers.append(nn.Linear(width, output_dim))
+
         self.layers = nn.ModuleList(layers)
 
     def forward(self, x):
-        # x: (B, N, in_features)
+        bsize, _, N = x.shape
+        x = x.permute(0, 2, 1).contiguous()  # (B, N, C)
+        x = x.view(-1, self.layers[0].in_features)  # (B*N, C)
+
         for layer in self.layers[:-1]:
             x = layer(x) if self.activation is None else self.activation(layer(x))
-        return self.layers[-1](x)
+        
+        x = self.layers[-1](x)
+        x = x.view(bsize, N, self.output_dim)  # (B, N, out_features)
+        x = x.permute(0, 2, 1).contiguous()    # (B, out_features, N)
+        
+        return x
+
+def build_conv_network(in_channels, out_channels, activation):
+    conv_network = torch.nn.Sequential()
+    conv_network.append(
+        nn.Conv1d(in_channels, int(out_channels / 2), kernel_size = 1)
+    )
+    conv_network.append(activation)
+    conv_network.append(
+        nn.Conv1d(int(out_channels / 2), out_channels, kernel_size = 1)
+    )
+
+    return conv_network
 
 
 class FNO1d(nn.Module):
@@ -81,80 +106,86 @@ class FNO1d(nn.Module):
         out_channels,
         modes,
         width,
-        block_activation=None,
-        lifting_activation=None,
-        n_blocks=4,
-        padding=0,
-        NN=False,
-        NN_params=None,
-        bias=True
+        block_activation = None,
+        n_blocks = 4,
+        padding = 0,
+        coord_features = False,
+        lift_activation = None,
+        lift_NN = False,
+        lift_NN_params = None,
+        decode_activation = None,
+        decode_NN = False,
+        decode_NN_params = None,
     ):
         super().__init__()
+        
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.modes = modes
         self.width = width
         self.block_activation = block_activation
-        self.lifting_activation = lifting_activation
         self.n_blocks = n_blocks
-        self.NN = NN
-        self.NN_params = NN_params
-        self.bias = bias
         self.padding = padding
+        self.coord_features = coord_features
+        
+        self.lift_activation = lift_activation
+        self.lift_NN = lift_NN
+        self.lift_NN_params = lift_NN_params
 
-        if not NN:
-            self.lifting = nn.Conv1d(in_channels, width, kernel_size=1, bias=bias)
-            self.projection = nn.Conv1d(width, out_channels, kernel_size=1)
+        self.decode_activation = decode_activation
+        self.decode_NN_params = decode_NN_params
+
+        if coord_features == True:
+            self.in_channels += 1
+
+        if lift_NN:
+            self.lift_network = Projection_NN(
+                input_dim = self.in_channels,
+                output_dim = self.width,
+                width = self.lift_NN_params["width"],
+                depth = self.lift_NN_params["depth"],
+                activation = self.lift_activation,
+            )
         else:
-            self.lifting = Projection_NN(
-                input_dim=1,
-                output_dim=width,
-                width=NN_params["width"],
-                depth=NN_params["depth"],
-                activation=lifting_activation,
+            self.lift_network = build_conv_network(self.in_channels, self.width, 
+                                                   self.lift_activation)
+            
+        if decode_NN:
+            self.decode_network = Projection_NN(
+                input_dim = self.width,
+                output_dim = self.out_channels,
+                width = self.decode_NN_params["width"],
+                depth = self.decode_NN_params["depth"],
+                activation = decode_activation,
             )
-            self.projection = Projection_NN(
-                input_dim=width,
-                output_dim=1,
-                width=NN_params["width"],
-                depth=NN_params["depth"],
-                activation=lifting_activation,
-            )
+        else:
+            self.decode_network = build_conv_network(self.width, 
+                                                     self.out_channels,
+                                                     self.decode_activation)
 
         self.fno_blocks = nn.ModuleList([
             FNOBlock1d(width, width, modes, block_activation)
             for _ in range(n_blocks)
         ])
 
+    # x: (B, C, N)
     def forward(self, x):
-        # x: (B, C, N)
+
+        if self.coord_features:
+            bsize, size_x = x.shape[0], x.shape[2]
+            grid_x = torch.linspace(0, 1, size_x, dtype=torch.float32, device=x.device)
+            grid_x = grid_x.unsqueeze(0).unsqueeze(0).repeat(bsize, 1, 1)
+            x = torch.cat((x, grid_x), dim=1)
+
+        x = self.lift_network(x)
+
         if self.padding != 0:
             x = F.pad(x, (self.padding, self.padding), mode='constant', value=0)
-
-        if self.NN:
-            # reshape to (B * N, 1)
-            B, C, N = x.shape
-            assert C == 1, "Projection_NN requires in_channels=1"
-            x = x.permute(0, 2, 1).reshape(B * N, 1)
-            x = self.lifting(x)  # (B*N, width)
-            x = x.reshape(B, N, self.width).permute(0, 2, 1)  # (B, width, N)
-        else:
-            x = self.lifting(x)
-
-        if self.lifting_activation is not None:
-            x = self.lifting_activation(x)
 
         for block in self.fno_blocks:
             x = block(x)
 
-        if self.NN:
-            # reshape to (B * N, width)
-            B, W, N = x.shape
-            x = x.permute(0, 2, 1).reshape(B * N, W)
-            x = self.projection(x)  # (B*N, 1)
-            x = x.reshape(B, N).unsqueeze(1)  # (B, 1, N)
-        else:
-            x = self.projection(x)
+        x = self.decode_network(x)
 
         if self.padding != 0:
             x = x[:, :, self.padding:-self.padding]

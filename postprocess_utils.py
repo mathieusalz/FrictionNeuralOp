@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from FNO_torch import FNO1d, dual_FNO
+from FNO import FNO1d, dual_FNO
 import torch
 
 def plot_results(model, x, y, name):

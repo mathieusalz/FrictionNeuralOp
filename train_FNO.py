@@ -3,49 +3,51 @@ import numpy as np
 from train_utils import train_model, model_setup
 from preprocess_utils import prepare_data, combine_with_suffix
 from postprocess_utils import plots, plot_results, plot_loss
-from FNO_torch import FNO1d
+from FNO import FNO1d
+import torch.nn.functional as F 
+import torch.nn as nn
 import matplotlib.pyplot as plt
 
-training_params = {"model_type": "dual",
-                   "pretrain": False,
-                   "lr": 2e-3,
-                   "lr_state_factor": 1}
+data_config = {"x_path": "data/friction_data/features_AgingLaw_v2.csv",
+               "y_path": "data/friction_data/targets_AgingLaw_v2.csv",
+               'train_samples': 600,
+               'log_norm': True,
+               'state_norm': False,
+               'heal_norm': False}
 
-best_heal_params = {'width_NN': 64,
-                     'depth_NN': 8,
-                     'mode': 12,
-                     'blocks': 6,
-                     'lift_act': torch.nn.functional.tanh,
-                     'block_act': torch.nn.functional.mish,
-                     'width': 32,
-                     'padding': 18}
+lift_config = {"NN" : False,
+               "act": nn.GELU()
+               }
 
-best_state_params = {'width_NN': 256,
-                     'depth_NN': 4,
-                     'mode': 64,
-                     'blocks': 2,
-                     'lift_act': torch.nn.functional.mish,
-                     'block_act': None,
-                     'width': 64,
-                     'padding': 18}
+decode_config = {"NN": True,
+                 "NN_params": {"width": 32,
+                               "depth": 1},
+                 "act": F.silu
+                 }
 
-best_single_model = {"model_type": "single",
-                     "mode": 64,
-                     "blocks": 8,
-                     "lift_act": torch.nn.functional.gelu,
-                     "block_act": torch.nn.functional.tanh,
-                     "width": 8,
-                     "lr": 2e-3,
-                     "padding": 9}
+fno_config = {"mode": 16,
+              "blocks": 4,
+              "act": F.gelu,
+              "width": 32,
+              "padding": 9,
+              "coord_features": True
+              }
 
-#config = {**training_params, **combine_with_suffix(best_heal_params, best_state_params)}
+train_config = {'lr': 1e-3,
+                'save_results': True,
+                'epochs': 100,
+                'model_type': 'single'}
+
+config = {"train": train_config,
+          "lift": lift_config,
+          "fno": fno_config,
+          "decode": decode_config}
 
 if __name__ == "__main__":
-    data, device = prepare_data("dual")
-    model = model_setup(best_single_model, device, NN= False)
-
-    train_model(best_single_model, model, data, device, save_results = True, total_epochs= 100, NN = False)
-    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data = prepare_data(data_config, device)
+    model = model_setup(config, data, device)
+    train_model(config, model, data, device)
     plots(model, data, device)    
 
 
