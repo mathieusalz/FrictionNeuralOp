@@ -1,12 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.fft
-import torch.nn.functional as F
-from typing import Callable, List, Union
-
+from typing import Callable, List, Union    
 
 class SpectralConv1d(nn.Module):
-    def __init__(self, in_channels, out_channels, modes):
+    def __init__(self, 
+                 in_channels : int, 
+                 out_channels: int, 
+                 modes: int):
+        
+        """
+        Initializes a 1D spectral convolution layer using complex weights in the Fourier domain.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            modes (int): Number of Fourier modes to retain (low-frequency modes).
+        """
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -44,7 +54,21 @@ class SpectralConv1d(nn.Module):
 
 
 class FNOBlock1d(nn.Module):
-    def __init__(self, in_channels, out_channels, modes, activation=None):
+    def __init__(self, 
+                 in_channels : int, 
+                 out_channels : int, 
+                 modes : int, 
+                 activation : nn.Module =  nn.Identity()):
+        """
+        Initializes a single Fourier Neural Operator (FNO) block for 1D data.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            modes (int): Number of retained Fourier modes in the spectral convolution.
+            activation (nn.Module, optional): Activation function applied after the block output. Default is nn.Identity().
+        """
+        
         super().__init__()
         self.activation = activation
         self.spectral_conv = SpectralConv1d(in_channels, out_channels, modes)
@@ -54,69 +78,103 @@ class FNOBlock1d(nn.Module):
         sc = self.spectral_conv(x)
         bc = self.bypass_conv(x)
         out = sc + bc
-        return out if self.activation is None else self.activation(out)
+        return self.activation(out)
 
 class Projection_NN(nn.Module):
-    def __init__(self, input_dim, output_dim, width, depth, activation):
-        super().__init__()
-        self.activation = activation
-        self.width = width
-        self.output_dim = output_dim
+    def __init__(self, 
+                 input_dim : int, 
+                 output_dim : int, 
+                 width : int, 
+                 depth : int, 
+                 activation: nn.Module = nn.Identity()):
+        
+        """
+        Initializes a fully-connected feedforward projection network.
 
-        layers = [nn.Linear(input_dim, width)]
+        Args:
+            input_dim (int): Input dimensionality.
+            output_dim (int): Output dimensionality.
+            width (int): Width (number of hidden units) in each hidden layer.
+            depth (int): Number of layers in the network (including input/output layers).
+            activation (nn.Module, optional): Activation function applied between layers. Default is nn.Identity().
+        """
+        
+        super().__init__()
+        layers = [nn.Linear(input_dim, width), activation]
         for _ in range(depth - 1):
             layers.append(nn.Linear(width, width))
             layers.append(activation)
-
         layers.append(nn.Linear(width, output_dim))
-
-        self.layers = nn.ModuleList(layers)
+        self.network = nn.Sequential(*layers)
 
     def forward(self, x):
         bsize, _, N = x.shape
-        x = x.permute(0, 2, 1).contiguous()  # (B, N, C)
-        x = x.view(-1, self.layers[0].in_features)  # (B*N, C)
-
-        for layer in self.layers[:-1]:
-            x = layer(x) if self.activation is None else self.activation(layer(x))
-        
-        x = self.layers[-1](x)
-        x = x.view(bsize, N, self.output_dim)  # (B, N, out_features)
-        x = x.permute(0, 2, 1).contiguous()    # (B, out_features, N)
-        
+        x = x.permute(0, 2, 1).contiguous().view(-1, self.network[0].in_features)
+        x = self.network(x)
+        x = x.view(bsize, N, self.network[-1].out_features).permute(0, 2, 1).contiguous()
         return x
 
-def build_conv_network(in_channels, out_channels, activation):
-    conv_network = torch.nn.Sequential()
-    conv_network.append(
-        nn.Conv1d(in_channels, int(out_channels / 2), kernel_size = 1)
-    )
-    conv_network.append(activation)
-    conv_network.append(
-        nn.Conv1d(int(out_channels / 2), out_channels, kernel_size = 1)
-    )
+class ConvNet1d(nn.Module):
+    """
+    A simple 1D convolutional network with a hidden layer and activation.
 
-    return conv_network
+    Args:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        activation (nn.Module, optional): Activation function between the convolutional layers. Default is nn.Identity().
+    """
+    def __init__(self, 
+                 in_channels: int, 
+                 out_channels: int, 
+                 activation: nn.Module = nn.Identity()):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
+            activation,
+            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1)
+        )
 
+    def forward(self, x):
+        return self.net(x)
 
 class FNO1d(nn.Module):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        modes,
-        width,
-        block_activation = None,
-        n_blocks = 4,
-        padding = 0,
-        coord_features = False,
-        lift_activation = None,
-        lift_NN = False,
-        lift_NN_params = None,
-        decode_activation = None,
-        decode_NN = False,
-        decode_NN_params = None,
+        in_channels : int,
+        out_channels : int,
+        modes : int,
+        width : int,
+        block_activation : nn.Module = nn.Identity(),
+        n_blocks : int = 4,
+        padding : int = 0,
+        coord_features : bool = False,
+        lift_activation : nn.Module = nn.Identity(),
+        lift_NN : bool = False,
+        lift_NN_params : dict = {},
+        decode_activation : nn.Module = nn.Identity(),
+        decode_NN : bool = False,
+        decode_NN_params : dict = {},
     ):
+        """
+        Initializes a 1D Fourier Neural Operator (FNO) model.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            modes (int): Number of Fourier modes retained in spectral convolutions.
+            width (int): Width of the internal FNO layers.
+            block_activation (nn.Module, optional): Activation applied after each FNO block. Default is nn.Identity().
+            n_blocks (int, optional): Number of stacked FNO blocks. Default is 4.
+            padding (int, optional): Amount of zero-padding added to input and removed from output. Default is 0.
+            coord_features (bool, optional): Whether to append coordinate information to input. Default is False.
+            lift_activation (nn.Module, optional): Activation function for the lifting network. Default is nn.Identity().
+            lift_NN (bool, optional): If True, use a projection MLP to lift input; else use convolution. Default is False.
+            lift_NN_params (dict, optional): Dictionary with keys "width" and "depth" for lifting MLP. Default is {}.
+            decode_activation (nn.Module, optional): Activation function for the decoding network. Default is nn.Identity().
+            decode_NN (bool, optional): If True, use a projection MLP to decode output; else use convolution. Default is False.
+            decode_NN_params (dict, optional): Dictionary with keys "width" and "depth" for decoding MLP. Default is {}.
+        """
+
         super().__init__()
         
         self.in_channels = in_channels
@@ -147,8 +205,8 @@ class FNO1d(nn.Module):
                 activation = self.lift_activation,
             )
         else:
-            self.lift_network = build_conv_network(self.in_channels, self.width, 
-                                                   self.lift_activation)
+            self.lift_network = ConvNet1d(self.in_channels, self.width, 
+                                          self.lift_activation)
             
         if decode_NN:
             self.decode_network = Projection_NN(
@@ -159,9 +217,9 @@ class FNO1d(nn.Module):
                 activation = decode_activation,
             )
         else:
-            self.decode_network = build_conv_network(self.width, 
-                                                     self.out_channels,
-                                                     self.decode_activation)
+            self.decode_network = ConvNet1d(self.width,
+                                            self.out_channels,
+                                            self.decode_activation)
 
         self.fno_blocks = nn.ModuleList([
             FNOBlock1d(width, width, modes, block_activation)
@@ -180,7 +238,7 @@ class FNO1d(nn.Module):
         x = self.lift_network(x)
 
         if self.padding != 0:
-            x = F.pad(x, (self.padding, self.padding), mode='constant', value=0)
+            x = nn.functional.pad(x, (self.padding, self.padding), mode='constant', value=0)
 
         for block in self.fno_blocks:
             x = block(x)
@@ -194,6 +252,14 @@ class FNO1d(nn.Module):
 
 class dual_FNO(nn.Module):
     def __init__(self, FNO_heal: FNO1d, FNO_state: FNO1d):
+        """
+        Initializes a dual FNO model composed of two independent FNO1d networks.
+
+        Args:
+            FNO_heal (FNO1d): FNO network responsible for predicting the healing component.
+            FNO_state (FNO1d): FNO network responsible for predicting the state component.
+        """
+
         super().__init__()
         self.FNO_heal = FNO_heal
         self.FNO_state = FNO_state
