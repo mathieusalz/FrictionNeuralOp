@@ -83,12 +83,18 @@ def train_loop(model, train_loader, val_x, val_y,
         epoch_loss = 0.0
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
-            noise = torch.randn_like(batch_x) * 0.015
-            batch_x_noisy = batch_x + noise
+            
+            rand_int = [1,2,3,4][torch.multinomial(torch.Tensor([0.6,0.25,0.10,0.05]), 1).item()]
+            batch_x_down = batch_x[:,:,::rand_int]
+            
+            std = torch.rand(1).item() * 0.015
+            noise = torch.randn_like(batch_x_down) * std
+            batch_x_noisy = batch_x_down + noise
+            
             output = model(batch_x_noisy)
-            loss = criterion(output, batch_y)
+            loss = criterion(output, batch_y[:,:,::rand_int])
             loss.backward()
-            utils.clip_grad_norm_(model.parameters(), 0.35)
+            utils.clip_grad_norm_(model.parameters(), 0.5)
             optimizer.step()
             epoch_loss += loss.item()
             scheduler.step()

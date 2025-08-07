@@ -35,7 +35,7 @@ lift_config = {"NN" : False,
 #                  }
 
 decode_config = {"NN": True,
-                 "NN_params": {"width": 64,
+                 "NN_params": {"width": 32,
                                "depth": 1},
                  "act": nn.SiLU()
                  }
@@ -43,7 +43,7 @@ decode_config = {"NN": True,
 fno_config = {"mode": 16,
               "blocks": 4,
               "act": nn.GELU(),
-              "width": 128,
+              "width": 32,
               "padding": 9,
               "coord_features": True
               }

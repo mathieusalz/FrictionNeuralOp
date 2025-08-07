@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.fft
 from typing import Callable, List, Union    
 
+drop = 0.05
+
 def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight)
@@ -13,6 +15,24 @@ def init_weights(m):
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
+
+class NeuronWiseActivation(nn.Module):
+    def __init__(self, num_neurons: int, base_activation: nn.Module):
+        """
+            y = activation(a_i * x_i)
+        """
+        super().__init__()
+        self.base_activation = base_activation
+        self.a = nn.Parameter(torch.ones(num_neurons))
+
+    def forward(self, x):
+        # x shape: (B, C, L)
+        if x.dim() == 3:  # (B, C, L)
+            return self.base_activation(self.a.view(1, -1, 1) * x)
+        elif x.dim() == 2:  # (B, features)
+            return self.base_activation(self.a.view(1, -1) * x)
+        else:
+            raise ValueError(f"Unsupported input dimension {x.dim()} in NeuronWiseActivation")
 
 class SpectralConv1d(nn.Module):
     def __init__(self, 
@@ -69,7 +89,8 @@ class FNOBlock1d(nn.Module):
                  in_channels : int, 
                  out_channels : int, 
                  modes : int, 
-                 activation : nn.Module = nn.Identity()):
+                 activation : nn.Module = nn.Identity(),
+                 adaptive: bool = True):
         """
         Initializes a single Fourier Neural Operator (FNO) block for 1D data.
 
@@ -81,12 +102,14 @@ class FNOBlock1d(nn.Module):
         """
         
         super().__init__()
-        self.activation = activation
+
+        self.activation = NeuronWiseActivation(out_channels, activation) if adaptive else activation
+
         self.spectral_conv = SpectralConv1d(in_channels, out_channels, modes)
         self.bypass_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
 
         self.bn = nn.BatchNorm1d(out_channels)
-        self.do = nn.Dropout(0.05)
+        self.do = nn.Dropout(drop)
 
     def forward(self, x):
         sc = self.spectral_conv(x)
@@ -103,7 +126,8 @@ class Projection_NN(nn.Module):
                  output_dim : int, 
                  width : int, 
                  depth : int, 
-                 activation: nn.Module = nn.Identity()):
+                 activation: nn.Module = nn.Identity(),
+                 adaptive: bool = True):
         
         """
         Initializes a fully-connected feedforward projection network.
@@ -117,17 +141,21 @@ class Projection_NN(nn.Module):
         """
         
         super().__init__()
+
+        def make_activation(num_neurons):
+            return NeuronWiseActivation(num_neurons, activation) if adaptive else activation
+        
         #layers = [nn.Linear(input_dim, width), activation]
         layers = [nn.Linear(input_dim, width)]
         layers.append(nn.BatchNorm1d(width))
-        layers.append(activation)
-        layers.append(nn.Dropout(0.05))
+        layers.append(make_activation(width))
+        layers.append(nn.Dropout(drop))
 
         for _ in range(depth - 1):
             layers.append(nn.Linear(width, width))
             layers.append(nn.BatchNorm1d(width))
-            layers.append(activation)
-            layers.append(nn.Dropout(0.05))
+            layers.append(make_activation(width))
+            layers.append(nn.Dropout(drop))
 
         layers.append(nn.Linear(width, output_dim))
         self.network = nn.Sequential(*layers)
@@ -151,13 +179,18 @@ class ConvNet1d(nn.Module):
     def __init__(self, 
                  in_channels: int, 
                  out_channels: int, 
-                 activation: nn.Module = nn.Identity()):
+                 activation: nn.Module = nn.Identity(),
+                 adaptive: bool = True):
         super().__init__()
+
+        def make_activation(num_neurons):
+            return NeuronWiseActivation(num_neurons, activation) if adaptive else activation
+
         self.net = nn.Sequential(
             nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
             nn.BatchNorm1d(out_channels // 2), 
-            activation,
-            nn.Dropout(0.05),
+            make_activation(out_channels // 2),
+            nn.Dropout(drop),
             nn.Conv1d(out_channels // 2, out_channels, kernel_size=1),
             nn.BatchNorm1d(out_channels), 
         )
