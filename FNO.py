@@ -3,6 +3,17 @@ import torch.nn as nn
 import torch.fft
 from typing import Callable, List, Union    
 
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.Conv1d):
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
+
 class SpectralConv1d(nn.Module):
     def __init__(self, 
                  in_channels : int, 
@@ -74,10 +85,16 @@ class FNOBlock1d(nn.Module):
         self.spectral_conv = SpectralConv1d(in_channels, out_channels, modes)
         self.bypass_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
 
+        self.bn = nn.BatchNorm1d(out_channels)
+        self.do = nn.Dropout(0.05)
+
     def forward(self, x):
         sc = self.spectral_conv(x)
         bc = self.bypass_conv(x)
         out = sc + bc
+        out = self.bn(out)
+        out = self.activation(out)
+        out = self.do(out)
         return self.activation(out)
 
 class Projection_NN(nn.Module):
@@ -100,10 +117,18 @@ class Projection_NN(nn.Module):
         """
         
         super().__init__()
-        layers = [nn.Linear(input_dim, width), activation]
+        #layers = [nn.Linear(input_dim, width), activation]
+        layers = [nn.Linear(input_dim, width)]
+        layers.append(nn.BatchNorm1d(width))
+        layers.append(activation)
+        layers.append(nn.Dropout(0.05))
+
         for _ in range(depth - 1):
             layers.append(nn.Linear(width, width))
+            layers.append(nn.BatchNorm1d(width))
             layers.append(activation)
+            layers.append(nn.Dropout(0.05))
+
         layers.append(nn.Linear(width, output_dim))
         self.network = nn.Sequential(*layers)
 
@@ -130,8 +155,11 @@ class ConvNet1d(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
+            nn.BatchNorm1d(out_channels // 2), 
             activation,
-            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1)
+            nn.Dropout(0.05),
+            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1),
+            nn.BatchNorm1d(out_channels), 
         )
 
     def forward(self, x):
@@ -225,6 +253,8 @@ class FNO1d(nn.Module):
             FNOBlock1d(width, width, modes, block_activation)
             for _ in range(n_blocks)
         ])
+
+        self.apply(init_weights)
 
     # x: (B, C, N)
     def forward(self, x):

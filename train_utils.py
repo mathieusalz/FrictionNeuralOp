@@ -83,10 +83,12 @@ def train_loop(model, train_loader, val_x, val_y,
         epoch_loss = 0.0
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
-            output = model(batch_x)
+            noise = torch.randn_like(batch_x) * 0.015
+            batch_x_noisy = batch_x + noise
+            output = model(batch_x_noisy)
             loss = criterion(output, batch_y)
             loss.backward()
-            utils.clip_grad_norm_(model.parameters(), 0.5)
+            utils.clip_grad_norm_(model.parameters(), 0.35)
             optimizer.step()
             epoch_loss += loss.item()
             scheduler.step()
@@ -142,8 +144,8 @@ def train_model(config, model, data, device="cuda"):
         lr_state_factor = config['train']["lr_state_factor"] if "lr_state_factor" in config['train'] else 1
 
         optimizer = optim.Adam([
-            {"params": model.FNO_state.parameters(), "lr": lr * lr_state_factor, "weight_decay": 1e-6},
-            {"params": model.FNO_heal.parameters(), "lr": lr, "weight_decay": 1e-6}
+            {"params": model.FNO_state.parameters(), "lr": lr * lr_state_factor, "weight_decay": 1e-4},
+            {"params": model.FNO_heal.parameters(), "lr": lr, "weight_decay": 1e-4}
         ])
 
         if lr_state_factor < 1e-6:

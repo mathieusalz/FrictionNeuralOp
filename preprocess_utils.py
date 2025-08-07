@@ -34,6 +34,10 @@ def prepare_data(data_config, device):
         x_max = train_x_norm_log.max()
         train_x_norm_log /= x_max
         test_x_norm_log = x_log_transform(test_x) / x_max
+        
+        # noise = torch.randn_like(train_x_norm_log) * 0.01
+        # train_x_norm_log = train_x_norm_log + noise
+
         train_norm_components.append(train_x_norm_log)
         test_norm_components.append(test_x_norm_log)
         data['train_x_norm_log'] = train_x_norm_log
@@ -44,6 +48,10 @@ def prepare_data(data_config, device):
         x_max = train_x_norm_state.max()
         train_x_norm_state /= x_max 
         test_x_norm_state = x_state_transform(test_x) / x_max
+        
+        # noise = torch.randn_like(train_x_norm_state) * 0.01
+        # train_x_norm_state = train_x_norm_state + noise
+        
         train_norm_components.append(train_x_norm_state)
         test_norm_components.append(test_x_norm_state)
         data['train_x_norm_state'] = train_x_norm_state
@@ -53,6 +61,10 @@ def prepare_data(data_config, device):
     if data_config['heal_norm']:
         train_x_norm_heal = x_heal_transform(train_x)
         test_x_norm_heal = x_heal_transform(test_x)
+
+        # noise = torch.randn_like(train_x_norm_heal) * 0.01
+        # train_x_norm_heal = train_x_norm_heal + noise
+
         train_norm_components.append(train_x_norm_heal)
         test_norm_components.append(test_x_norm_heal)
         data['train_x_norm_heal'] = train_x_norm_state
