@@ -1,13 +1,8 @@
 import torch
-import numpy as np
 from train_utils import train_model, model_setup
 from preprocess_utils import prepare_data, check_config
-from plot_utils import plots, plot_results, plot_loss
-from FNO import FNO1d
-import torch.nn as nn
+from plot_utils import plots
 from copy import deepcopy as dc
-import time
-
 
 data_config = {"x_path": "data/friction_data/features_AgingLaw_v2.csv",
                "y_path": "data/friction_data/targets_AgingLaw_v2.csv",
