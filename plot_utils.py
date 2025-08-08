@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from FNO import FNO1d, dual_FNO
 import torch
 
+
 def plot_results(model: torch.nn.Module, x: torch.Tensor, y: torch.Tensor, name: str) -> None:
     """
     Plot model predictions versus ground truth for 100 samples and save the figure.
@@ -106,45 +107,3 @@ def plots(model: torch.nn.Module, data: dict, device: torch.device) -> None:
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for legend on top
         plt.savefig("train_contributions.png", dpi=300, bbox_inches='tight')
         plt.close()
-
-def save_model(model: torch.nn.Module, name: str = 'model') -> None:
-    """
-    Save the model's state dictionary and relevant initialization parameters to a file.
-
-    Args:
-        model (torch.nn.Module): The model to save.
-        name (str, optional): Base filename for saving the model. Defaults to 'model'.
-    """
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'model_params': {
-            'in_channels': model.in_channels,
-            'out_channels': model.out_channels,
-            'modes': model.modes,
-            'width': model.width,
-            'block_activation': model.block_activation,
-            'lifting_activation': model.lifting_activation,
-            'n_blocks': model.n_blocks,
-            'padding': model.padding,
-            'NN': model.NN,
-            'NN_params': model.NN_params if model.NN else None,
-            'bias': model.lifting.bias is not None if not model.NN else False,
-        }
-    }, f'{name}.pth')
-
-def load_model(model_name: str, device: torch.device) -> torch.nn.Module:
-    """
-    Load a saved model from a file, reconstruct it with saved parameters, and load its state dictionary.
-
-    Args:
-        model_name (str): Base filename (without extension) of the saved model.
-        device (torch.device): Device to map the loaded model to.
-
-    Returns:
-        torch.nn.Module: The loaded model instance.
-    """    
-    checkpoint = torch.load(f'{model_name}.pth', map_location=device)
-    model_params = checkpoint['model_params']
-    model = FNO1d(**model_params).to(device)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    return model

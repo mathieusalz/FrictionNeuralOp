@@ -9,6 +9,34 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
+def get_activation(act_name: str) -> nn.Module:
+    """
+    Map a string to a PyTorch activation module.
+    
+    Args:
+        act_name (str): Name of the activation function.
+    
+    Returns:
+        nn.Module: Corresponding activation function module.
+    
+    Raises:
+        ValueError: If the activation name is unknown.
+    """
+    act_name = act_name.lower()
+    if act_name == 'gelu':
+        return nn.GELU()
+    elif act_name == 'silu':
+        return nn.SiLU()
+    elif act_name == 'relu':
+        return nn.ReLU()
+    elif act_name == 'leakyrelu':
+        return nn.LeakyReLU()
+    elif act_name == 'tanh':
+        return nn.Tanh()
+    # Add more activations as needed
+    else:
+        raise ValueError(f"Unknown activation function '{act_name}' specified in config.")
+
 
 def model_setup(config : dict, 
                 data: dict, 
@@ -37,15 +65,15 @@ def model_setup(config : dict,
                 out_channels      = out_channels,
                 modes             = config['fno']['mode'],
                 width             = config['fno']['width'],
-                block_activation  = config['fno']['act'],
+                block_activation  = get_activation(config['fno']['act']),
                 n_blocks          = config['fno']['blocks'],
                 padding           = config['fno']['padding'],
                 coord_features    = config['fno']['coord_features'],
                 adaptive          = config['fno']['adaptive'],
-                lift_activation   = config['lift']['act'],
+                lift_activation   = get_activation(config['lift']['act']),
                 lift_NN           = config['lift']['NN'],
                 lift_NN_params    = config['lift']['NN_params'] if 'NN_params' in config['lift'] else None,
-                decode_activation = config['decode']['act'],
+                decode_activation = get_activation(config['decode']['act']),
                 decode_NN         = config['decode']['NN'],
                 decode_NN_params  = config['decode']['NN_params'] if 'NN_params' in config['decode'] else None,
                 ).to(device)
@@ -56,15 +84,15 @@ def model_setup(config : dict,
                 out_channels      = 1,
                 modes             = config['heal']['fno']['mode'],
                 width             = config['heal']['fno']['width'],
-                block_activation  = config['heal']['fno']['act'],
+                block_activation  = get_activation(config['heal']['fno']['act']),
                 n_blocks          = config['heal']['fno']['blocks'],
                 padding           = config['heal']['fno']['padding'],
                 coord_features    = config['heal']['fno']['coord_features'],
                 adaptive          = config['heal']['fno']['adaptive'],
-                lift_activation   = config['heal']['lift']['act'],
+                lift_activation   = get_activation(config['heal']['lift']['act']),
                 lift_NN           = config['heal']['lift']['NN'],
                 lift_NN_params    = config['heal']['lift']['NN_params'] if 'NN_params' in config['heal']['lift'] else {},
-                decode_activation = config['heal']['decode']['act'],
+                decode_activation = get_activation(config['heal']['decode']['act']),
                 decode_NN         = config['heal']['decode']['NN'],
                 decode_NN_params  = config['heal']['decode']['NN_params'] if 'NN_params' in config['heal']['decode'] else {},
                 ).to(device)
@@ -74,15 +102,15 @@ def model_setup(config : dict,
                 out_channels      = 1,
                 modes             = config['state']['fno']['mode'],
                 width             = config['state']['fno']['width'],
-                block_activation  = config['state']['fno']['act'],
+                block_activation  = get_activation(config['state']['fno']['act']),
                 n_blocks          = config['state']['fno']['blocks'],
                 padding           = config['state']['fno']['padding'],
                 coord_features    = config['state']['fno']['coord_features'],
                 adaptive          = config['state']['fno']['adaptive'],
-                lift_activation   = config['state']['lift']['act'],
+                lift_activation   = get_activation(config['state']['lift']['act']),
                 lift_NN           = config['state']['lift']['NN'],
                 lift_NN_params    = config['state']['lift']['NN_params'] if 'NN_params' in config['state']['lift'] else {},
-                decode_activation = config['state']['decode']['act'],
+                decode_activation = get_activation(config['state']['decode']['act']),
                 decode_NN         = config['state']['decode']['NN'],
                 decode_NN_params  = config['state']['decode']['NN_params'] if 'NN_params' in config['state']['decode'] else {},
                 ).to(device)
