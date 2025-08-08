@@ -90,7 +90,7 @@ class FNOBlock1d(nn.Module):
                  out_channels : int, 
                  modes : int, 
                  activation : nn.Module = nn.Identity(),
-                 adaptive: bool = True):
+                 adaptive: bool = False):
         """
         Initializes a single Fourier Neural Operator (FNO) block for 1D data.
 
@@ -127,7 +127,7 @@ class Projection_NN(nn.Module):
                  width : int, 
                  depth : int, 
                  activation: nn.Module = nn.Identity(),
-                 adaptive: bool = True):
+                 adaptive: bool = False):
         
         """
         Initializes a fully-connected feedforward projection network.
@@ -180,7 +180,7 @@ class ConvNet1d(nn.Module):
                  in_channels: int, 
                  out_channels: int, 
                  activation: nn.Module = nn.Identity(),
-                 adaptive: bool = True):
+                 adaptive: bool = False):
         super().__init__()
 
         def make_activation(num_neurons):
@@ -209,6 +209,7 @@ class FNO1d(nn.Module):
         n_blocks : int = 4,
         padding : int = 0,
         coord_features : bool = False,
+        adaptive : bool = False,
         lift_activation : nn.Module = nn.Identity(),
         lift_NN : bool = False,
         lift_NN_params : dict = {},
@@ -246,6 +247,7 @@ class FNO1d(nn.Module):
         self.n_blocks = n_blocks
         self.padding = padding
         self.coord_features = coord_features
+        self.adaptive = adaptive
         
         self.lift_activation = lift_activation
         self.lift_NN = lift_NN
@@ -264,10 +266,13 @@ class FNO1d(nn.Module):
                 width = self.lift_NN_params["width"],
                 depth = self.lift_NN_params["depth"],
                 activation = self.lift_activation,
+                adaptive = self.adaptive
             )
         else:
-            self.lift_network = ConvNet1d(self.in_channels, self.width, 
-                                          self.lift_activation)
+            self.lift_network = ConvNet1d(in_channels = self.in_channels, 
+                                          out_channels = self.width, 
+                                          activation = self.lift_activation,
+                                          adaptive = self.adaptive)
             
         if decode_NN:
             self.decode_network = Projection_NN(
@@ -276,14 +281,16 @@ class FNO1d(nn.Module):
                 width = self.decode_NN_params["width"],
                 depth = self.decode_NN_params["depth"],
                 activation = decode_activation,
+                adaptive = self.adaptive
             )
         else:
             self.decode_network = ConvNet1d(self.width,
                                             self.out_channels,
-                                            self.decode_activation)
+                                            self.decode_activation,
+                                            adaptive = self.adaptive)
 
         self.fno_blocks = nn.ModuleList([
-            FNOBlock1d(width, width, modes, block_activation)
+            FNOBlock1d(width, width, modes, block_activation, adaptive)
             for _ in range(n_blocks)
         ])
 

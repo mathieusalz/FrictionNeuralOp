@@ -9,7 +9,7 @@ def model_setup(config : dict,
                 data: dict, 
                 device: torch.device):
 
-    if config['train']['model_type'] == 'single':
+    if config['model_type'] == 'single':
         in_channels = data['train_x_norm'].shape[1]
         out_channels = data['train_y_norm'].shape[1]
         model = FNO1d(
@@ -21,6 +21,7 @@ def model_setup(config : dict,
                 n_blocks          = config['fno']['blocks'],
                 padding           = config['fno']['padding'],
                 coord_features    = config['fno']['coord_features'],
+                adaptive          = config['fno']['adaptive'],
                 lift_activation   = config['lift']['act'],
                 lift_NN           = config['lift']['NN'],
                 lift_NN_params    = config['lift']['NN_params'] if 'NN_params' in config['lift'] else None,
@@ -39,6 +40,7 @@ def model_setup(config : dict,
                 n_blocks          = config['heal']['fno']['blocks'],
                 padding           = config['heal']['fno']['padding'],
                 coord_features    = config['heal']['fno']['coord_features'],
+                adaptive          = config['heal']['fno']['adaptive'],
                 lift_activation   = config['heal']['lift']['act'],
                 lift_NN           = config['heal']['lift']['NN'],
                 lift_NN_params    = config['heal']['lift']['NN_params'] if 'NN_params' in config['heal']['lift'] else {},
@@ -56,6 +58,7 @@ def model_setup(config : dict,
                 n_blocks          = config['state']['fno']['blocks'],
                 padding           = config['state']['fno']['padding'],
                 coord_features    = config['state']['fno']['coord_features'],
+                adaptive          = config['state']['fno']['adaptive'],
                 lift_activation   = config['state']['lift']['act'],
                 lift_NN           = config['state']['lift']['NN'],
                 lift_NN_params    = config['state']['lift']['NN_params'] if 'NN_params' in config['state']['lift'] else {},
@@ -68,8 +71,8 @@ def model_setup(config : dict,
 
     return model
 
-def lr_lambda(step):
-    return 0.8 ** (step // 1000)
+def make_decay_fn(factor, interval):
+    return lambda step: factor ** (step // interval)
 
 def train_loop(model, train_loader, val_x, val_y, 
                optimizer, scheduler, epochs, 
@@ -117,18 +120,18 @@ def pretraining(model,
                 criterion):
     
     if config['pretrain']['load'] == True:
-        print("LOADING PRETRAINED")
+        print("\t LOADING PRETRAINED")
         fno_state = load_model("state_model", device)
         model.FNO_state = fno_state
 
-    elif config['pretrain'] == 'load':
-        print('PRETRAINING')
-        train_loader_state = data['train_loader_state']
-        test_x_state = data['test_x_norm_state']
-        test_y_state = data['test_y_norm_state']
+    else:
+        print(f'\t PRETRAINING for {config['pretrain']['epochs']}')
+        train_loader_state = data['train_loader_SO']
+        test_x_state = data['test_x_norm_SO']
+        test_y_state = data['test_y_norm_SO']
 
         optimizer_state = optim.Adam(model.FNO_state.parameters(), lr=config['pretrain']['lr'])
-        scheduler_state = optim.lr_scheduler.ExponentialLR(optimizer_state, gamma=0.95)
+        scheduler_state = torch.optim.lr_scheduler.LambdaLR(optimizer_state, lr_lambda=make_decay_fn(0.9, 1000))
 
         loss_history_state, val_loss_history_state = train_loop(model.FNO_state, train_loader_state, test_x_state, test_y_state,
                                                                 optimizer_state, scheduler_state, config['pretrain']['epochs'], 
@@ -139,10 +142,11 @@ def pretraining(model,
         
 
 def train_model(config, model, data, device="cuda"):
+    print(f"Beginning Training for {config['train']['epochs']}")
     criterion = nn.MSELoss()
     lr = config['train']["lr"]
 
-    if config['train']['model_type'] == 'dual':
+    if config['model_type'] == 'dual':
 
         if 'pretrain' in config:
             pretraining(model, data, device, config, criterion)
@@ -161,7 +165,7 @@ def train_model(config, model, data, device="cuda"):
     else: 
         optimizer = optim.Adam(model.parameters(), lr=lr)
         
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=make_decay_fn(0.8, 1000))
 
     loss_history, val_loss_history = [], []
     train_loader, test_x, test_y = data['train_loader'], data['test_x_norm'], data['test_y_norm']
@@ -172,3 +176,4 @@ def train_model(config, model, data, device="cuda"):
 
     data['loss_history'] = loss_history
     data['val_loss_history'] = val_loss_history
+    print("\t End of Training")
