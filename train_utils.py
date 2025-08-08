@@ -4,10 +4,30 @@ import torch.optim as optim
 from FNO import FNO1d, dual_FNO
 from postprocess_utils import load_model
 import torch.nn.utils as utils
+from typing import Tuple
+from torch.optim.optimizer import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
+from torch.utils.data import DataLoader
+
 
 def model_setup(config : dict, 
                 data: dict, 
-                device: torch.device):
+                device: torch.device) -> nn.Module:
+    """
+    Initializes and returns a model based on the provided configuration and data.
+
+    For a 'single' model_type, sets up a single FNO1d model with parameters from config.
+    For a 'dual' model_type, sets up separate FNO1d models for 'heal' and 'state' and combines
+    them into a dual_FNO model.
+
+    Args:
+        config (dict): Configuration dictionary specifying model parameters and type.
+        data (dict): Dictionary containing training data tensors for shape inference.
+        device (torch.device): Device to place the model on (CPU or GPU).
+
+    Returns:
+        nn.Module: Instantiated model ready for training.
+    """
 
     if config['model_type'] == 'single':
         in_channels = data['train_x_norm'].shape[1]
@@ -71,13 +91,52 @@ def model_setup(config : dict,
 
     return model
 
-def make_decay_fn(factor, interval):
+def make_decay_fn(factor: float, 
+                  interval: int):
+    """
+    Creates a learning rate decay function for a LambdaLR scheduler.
+
+    The returned function decays the learning rate by 'factor' every 'interval' steps.
+
+    Args:
+        factor (float): Multiplicative decay factor (e.g., 0.9).
+        interval (int): Number of steps between each decay.
+
+    Returns:
+        Callable[[int], float]: Function mapping the current step to the decay multiplier.
+    """
     return lambda step: factor ** (step // interval)
 
-def train_loop(model, train_loader, val_x, val_y, 
-               optimizer, scheduler, epochs, 
-               criterion = nn.MSELoss(), save_results = True):
+def train_loop(model: nn.Module,
+               train_loader: DataLoader,
+               val_x: torch.Tensor,
+               val_y: torch.Tensor,
+               optimizer: Optimizer,
+               scheduler: _LRScheduler,
+               epochs: int,
+               criterion: nn.modules.loss._Loss = nn.MSELoss(),
+               save_results: bool = True) -> Tuple[list, list]:
+    """
+    Runs the training loop for a specified number of epochs.
 
+    For each epoch, trains the model on the training data with optional noise and downsampling,
+    applies gradient clipping, updates optimizer and scheduler, and evaluates on validation data.
+
+    Args:
+        model (nn.Module): The model to train.
+        train_loader (DataLoader): DataLoader providing training batches.
+        val_x (torch.Tensor): Validation input data.
+        val_y (torch.Tensor): Validation target data.
+        optimizer (Optimizer): Optimizer instance to update model parameters.
+        scheduler (_LRScheduler): Learning rate scheduler.
+        epochs (int): Number of epochs to train.
+        criterion (nn.modules.loss._Loss, optional): Loss function. Defaults to MSELoss.
+        save_results (bool, optional): Whether to save loss history each epoch. Defaults to True.
+
+    Returns:
+        Tuple[list, list]: Tuple containing training loss history and validation loss history.
+    """
+    
     loss_history = []
     val_loss_history = []
 
@@ -113,11 +172,27 @@ def train_loop(model, train_loader, val_x, val_y,
 
     return loss_history, val_loss_history
 
-def pretraining(model, 
-                data, 
-                device, 
-                config, 
-                criterion):
+def pretraining(model: nn.Module, 
+                data: dict, 
+                device: torch.device, 
+                config: dict, 
+                criterion: nn.modules.loss._Loss) -> None:
+    """
+    Handles optional pretraining of the state component of a dual model.
+
+    If pretraining is enabled and load is True, loads a pretrained model.
+    Otherwise, trains the state model using the provided pretraining dataset and configuration.
+
+    Args:
+        model (nn.Module): The dual model containing a FNO_state submodel.
+        data (dict): Dataset dictionary including pretraining loaders.
+        device (torch.device): Device to run training on.
+        config (dict): Configuration dictionary with pretraining parameters.
+        criterion (nn.modules.loss._Loss): Loss function to optimize.
+
+    Returns:
+        None
+    """
     
     if config['pretrain']['load'] == True:
         print("\t LOADING PRETRAINED")
@@ -141,7 +216,29 @@ def pretraining(model,
         data['val_loss_history_state'] = val_loss_history_state
         
 
-def train_model(config, model, data, device="cuda"):
+def train_model(config: dict, 
+                model: nn.Module, 
+                data: dict, device: 
+                torch.device):
+    """
+    Orchestrates the full training procedure based on the configuration.
+
+    For dual models, optionally performs pretraining on the state submodel, sets up
+    separate optimizers with learning rate factors, and disables training if factor is near zero.
+    For single models, trains the entire model with a single optimizer.
+
+    Updates the data dictionary with training and validation loss histories.
+
+    Args:
+        config (dict): Configuration dictionary with training parameters.
+        model (nn.Module): The model to train.
+        data (dict): Dataset and preprocessed data.
+        device (torch.device): Device to run training on.
+
+    Returns:
+        None
+    """
+    
     print(f"Beginning Training for {config['train']['epochs']}")
     criterion = nn.MSELoss()
     lr = config['train']["lr"]
@@ -165,7 +262,7 @@ def train_model(config, model, data, device="cuda"):
     else: 
         optimizer = optim.Adam(model.parameters(), lr=lr)
         
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=make_decay_fn(0.8, 1000))
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=make_decay_fn(data['train']['decay'], data['train']['steps']))
 
     loss_history, val_loss_history = [], []
     train_loader, test_x, test_y = data['train_loader'], data['test_x_norm'], data['test_y_norm']

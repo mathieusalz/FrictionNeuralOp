@@ -3,18 +3,65 @@ from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 import warnings
 
-def x_log_transform(x):
+def x_log_transform(x: np.array) -> torch.Tensor:
+    """
+    Applies a double logarithmic transformation to the input array.
+
+    Transforms the input using log(log(1/x)) and returns it as a Torch tensor.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Transformed tensor.
+    """
     return torch.Tensor(np.log(np.log(1/x)))
 
-def x_state_transform(x):
+def x_state_transform(x: np.array) -> torch.Tensor:
+    """
+    Applies a transformation suitable for state normalization.
+
+    Transforms the input using sqrt(log(1e8 * x)) and returns it as a Torch tensor.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Transformed tensor.
+    """
     return torch.Tensor(np.sqrt(np.log(1e8*x)))
 
-def x_heal_transform(x):
+def x_heal_transform(x: np.array) -> torch.Tensor:
+    """
+    Creates a binary mask indicating healing points.
+
+    Compares each value in the input to 1e-8 and marks as 1 if within 1e-12 of that value, else 0.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Binary mask tensor.
+    """
     return (torch.abs(torch.Tensor(x) - 1e-8) < 1e-12).float()
 
-def prepare_data(config, device):
-    print("PREPARING DATA")
+def prepare_data(config: dict, 
+                 device: torch.device) -> dict:
+    """
+    Loads, normalizes, and prepares the dataset for training and testing.
 
+    Depending on the config, applies log, state, and/or heal normalization.
+    Also handles loading of pretraining data if specified.
+
+    Args:
+        config (dict): Dictionary containing data paths, normalization settings, and training samples.
+        device (torch.device): Device to move tensors to (CPU or GPU).
+
+    Returns:
+        dict: Dictionary containing all processed tensors, datasets, and dataloaders.
+    """
+    
+    print("PREPARING DATA")
     feature = np.genfromtxt(config['data']['x_path'], delimiter=',')[:, np.newaxis, :]
     target = np.genfromtxt(config['data']['y_path'], delimiter=',')[:, np.newaxis, :]
 
@@ -112,7 +159,21 @@ def prepare_data(config, device):
     return data
 
 
-def check_lift_or_decode(name, block):
+def check_lift_or_decode(name: str, 
+                         block: dict) -> None:
+    """
+    Validates the configuration block for either a 'lift' or 'decode' component.
+
+    Ensures proper specification of NN usage and parameters.
+
+    Args:
+        name (str): Name of the block (used for error messages).
+        block (dict): Configuration dictionary for the block.
+
+    Raises:
+        KeyError: If required keys are missing or incompatible with NN flag.
+    """
+     
     if "NN" not in block:
         raise KeyError(f"Missing key 'NN' in {name} config")
     
@@ -126,13 +187,39 @@ def check_lift_or_decode(name, block):
         if "NN_params" in block:
             raise KeyError(f"Unexpected 'NN_params' in {name} config while 'NN' is False")
 
-def check_fno_block(name, fno_block):
+def check_fno_block(name: str, 
+                    fno_block: dict) -> None:
+    """
+    Checks that all required parameters for an FNO block are present.
+
+    Args:
+        name (str): Name of the block (used for error messages).
+        fno_block (dict): Dictionary containing FNO parameters.
+
+    Raises:
+        KeyError: If any required FNO parameter is missing.
+    """
+
     required_keys = ["mode", "blocks", "act", "width", "padding", "coord_features", "adaptive"]
     missing = [k for k in required_keys if k not in fno_block]
     if missing:
         raise KeyError(f"Missing keys in {name}['fno']: {missing}")
 
-def check_component(name, comp):
+def check_component(name: str, 
+                    comp: dict) -> None:
+    """
+    Validates a model component (e.g., 'heal', 'state', or 'single') by checking its subcomponents.
+
+    Subcomponents include 'fno', 'lift', and 'decode', each with their own structure and validation.
+
+    Args:
+        name (str): Component name for logging and error messages.
+        comp (dict): Dictionary containing 'fno', 'lift', and 'decode' blocks.
+
+    Raises:
+        KeyError: If any expected subcomponent or required parameter is missing.
+    """
+    
     if "fno" not in comp:
         raise KeyError(f"Missing 'fno' in {name} config")
     if "lift" not in comp:
@@ -144,7 +231,25 @@ def check_component(name, comp):
     check_lift_or_decode(f"{name}['lift']", comp["lift"])
     check_lift_or_decode(f"{name}['decode']", comp["decode"])
 
-def check_config(config):
+def check_config(config: dict) -> None:
+    """
+    Validates the full configuration dictionary before training.
+
+    Checks:
+        - Data keys and normalization setup.
+        - Training keys.
+        - Model type-specific keys (single or dual).
+        - Pretraining keys if applicable.
+        - Heal and state components for dual models.
+
+    Args:
+        config (dict): Full configuration dictionary.
+
+    Raises:
+        KeyError: If required fields or valid settings are missing.
+        ValueError: If model_type is not 'single' or 'dual'.
+    """
+
     # --- Data ---
     if 'data' not in config:
         raise KeyError("Missing key 'data' used to prepare training and test data")
@@ -165,7 +270,7 @@ def check_config(config):
     if 'training' not in config:
         raise KeyError("Missing key 'training' used to setup training loop")
     else:
-        required_train_keys = ['lr', 'save_results', 'epochs']
+        required_train_keys = ['lr', 'save_results', 'epochs', 'decay', 'decay_steps']
         missing_train = [k for k in required_train_keys if k not in config['train']]
         if missing_train:
             raise KeyError(f"Missing keys in train_config: {missing_train}")

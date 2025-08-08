@@ -3,7 +3,16 @@ import matplotlib.pyplot as plt
 from FNO import FNO1d, dual_FNO
 import torch
 
-def plot_results(model, x, y, name):
+def plot_results(model: torch.nn.Module, x: torch.Tensor, y: torch.Tensor, name: str) -> None:
+    """
+    Plot model predictions versus ground truth for 100 samples and save the figure.
+
+    Args:
+        model (torch.nn.Module): Trained model used for inference.
+        x (torch.Tensor): Input tensor to generate predictions.
+        y (torch.Tensor): Ground truth tensor for comparison.
+        name (str): Filename to save the generated plot.
+    """
     fig, axes = plt.subplots(10, 10, figsize=(20, 20))
     axes = axes.flatten()
     for i in range(100):
@@ -20,7 +29,15 @@ def plot_results(model, x, y, name):
     fig.savefig(name, dpi=300, bbox_inches='tight')
     plt.close(fig)
 
-def plot_loss(loss, val, name):
+def plot_loss(loss: list, val: list, name: str) -> None:
+    """
+    Plot training and validation loss curves on a logarithmic scale and save the figure.
+
+    Args:
+        loss (list): List of training loss values per epoch.
+        val (list): List of validation loss values per epoch.
+        name (str): Filename to save the loss plot.
+    """
     plt.figure(figsize=(8,6))
     plt.plot(loss, label="train loss")
     plt.plot(val, label="val loss")
@@ -32,8 +49,17 @@ def plot_loss(loss, val, name):
     plt.close()
 
 
-def plots(model, data, device):
-    
+def plots(model: torch.nn.Module, data: dict, device: torch.device) -> None:
+    """
+    Generate and save multiple plots including loss curves and inference results for train/test sets.
+
+    If the model is a dual_FNO, additionally plots pretraining losses and separate predictions for state and heal components.
+
+    Args:
+        model (torch.nn.Module): The trained model (single or dual).
+        data (dict): Dataset dictionary containing normalized inputs, targets, and loss histories.
+        device (torch.device): Device where tensors reside.
+    """    
     train_x_norm = data['train_x_norm']
     train_y_norm = data['train_y_norm']
     test_x_norm = data['test_x_norm']
@@ -81,8 +107,14 @@ def plots(model, data, device):
         plt.savefig("train_contributions.png", dpi=300, bbox_inches='tight')
         plt.close()
 
-def save_model(model, name = 'model'):
+def save_model(model: torch.nn.Module, name: str = 'model') -> None:
+    """
+    Save the model's state dictionary and relevant initialization parameters to a file.
 
+    Args:
+        model (torch.nn.Module): The model to save.
+        name (str, optional): Base filename for saving the model. Defaults to 'model'.
+    """
     torch.save({
         'model_state_dict': model.state_dict(),
         'model_params': {
@@ -100,7 +132,17 @@ def save_model(model, name = 'model'):
         }
     }, f'{name}.pth')
 
-def load_model(model_name, device):
+def load_model(model_name: str, device: torch.device) -> torch.nn.Module:
+    """
+    Load a saved model from a file, reconstruct it with saved parameters, and load its state dictionary.
+
+    Args:
+        model_name (str): Base filename (without extension) of the saved model.
+        device (torch.device): Device to map the loaded model to.
+
+    Returns:
+        torch.nn.Module: The loaded model instance.
+    """    
     checkpoint = torch.load(f'{model_name}.pth', map_location=device)
     model_params = checkpoint['model_params']
     model = FNO1d(**model_params).to(device)

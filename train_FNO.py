@@ -50,6 +50,8 @@ fno_config = {"mode": 16,
               }
 
 train_config = {'lr': 1e-3,
+                'decay': 0.9,
+                'decay_steps': 1000,
                 'save_results': True,
                 'epochs': 100}
 
