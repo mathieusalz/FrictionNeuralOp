@@ -3,3 +3,4 @@ VENV/
 __pycache__/
 *.out
 *.pth
+trained_models/
