@@ -3,7 +3,17 @@ import matplotlib.pyplot as plt
 from FNO import FNO1d, dual_FNO
 import torch
 
-def plot_results(model, x, y, name):
+
+def plot_results(model: torch.nn.Module, x: torch.Tensor, y: torch.Tensor, name: str) -> None:
+    """
+    Plot model predictions versus ground truth for 100 samples and save the figure.
+
+    Args:
+        model (torch.nn.Module): Trained model used for inference.
+        x (torch.Tensor): Input tensor to generate predictions.
+        y (torch.Tensor): Ground truth tensor for comparison.
+        name (str): Filename to save the generated plot.
+    """
     fig, axes = plt.subplots(10, 10, figsize=(20, 20))
     axes = axes.flatten()
     for i in range(100):
@@ -20,7 +30,15 @@ def plot_results(model, x, y, name):
     fig.savefig(name, dpi=300, bbox_inches='tight')
     plt.close(fig)
 
-def plot_loss(loss, val, name):
+def plot_loss(loss: list, val: list, name: str) -> None:
+    """
+    Plot training and validation loss curves on a logarithmic scale and save the figure.
+
+    Args:
+        loss (list): List of training loss values per epoch.
+        val (list): List of validation loss values per epoch.
+        name (str): Filename to save the loss plot.
+    """
     plt.figure(figsize=(8,6))
     plt.plot(loss, label="train loss")
     plt.plot(val, label="val loss")
@@ -32,8 +50,17 @@ def plot_loss(loss, val, name):
     plt.close()
 
 
-def plots(model, data, device):
-    
+def plots(model: torch.nn.Module, data: dict, device: torch.device) -> None:
+    """
+    Generate and save multiple plots including loss curves and inference results for train/test sets.
+
+    If the model is a dual_FNO, additionally plots pretraining losses and separate predictions for state and heal components.
+
+    Args:
+        model (torch.nn.Module): The trained model (single or dual).
+        data (dict): Dataset dictionary containing normalized inputs, targets, and loss histories.
+        device (torch.device): Device where tensors reside.
+    """    
     train_x_norm = data['train_x_norm']
     train_y_norm = data['train_y_norm']
     test_x_norm = data['test_x_norm']
@@ -54,8 +81,8 @@ def plots(model, data, device):
     if isinstance(model, dual_FNO):
         if 'loss_history_state' in data:
             plot_loss(data['loss_history_state'], data['val_loss_history_state'], "loss_plot_pretrain.png")
-        #plot_results(model.FNO_state,data['train_x_norm_state'], data['train_y_norm_state'], 'state_train.png')
-        #plot_results(model.FNO_state,data['test_x_norm_state'], data['test_y_norm_state'], 'state_test.png')
+        plot_results(model.FNO_state,data['train_x_norm_SO'], data['train_y_norm_SO'], 'state_train.png')
+        plot_results(model.FNO_state,data['test_x_norm_SO'], data['test_y_norm_SO'], 'state_test.png')
         
         fig, axes = plt.subplots(6, 6, figsize=(20, 20))
         axes = axes.flatten()
@@ -80,29 +107,3 @@ def plots(model, data, device):
         plt.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for legend on top
         plt.savefig("train_contributions.png", dpi=300, bbox_inches='tight')
         plt.close()
-
-def save_model(model, name = 'model'):
-
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'model_params': {
-            'in_channels': model.in_channels,
-            'out_channels': model.out_channels,
-            'modes': model.modes,
-            'width': model.width,
-            'block_activation': model.block_activation,
-            'lifting_activation': model.lifting_activation,
-            'n_blocks': model.n_blocks,
-            'padding': model.padding,
-            'NN': model.NN,
-            'NN_params': model.NN_params if model.NN else None,
-            'bias': model.lifting.bias is not None if not model.NN else False,
-        }
-    }, f'{name}.pth')
-
-def load_model(model_name, device):
-    checkpoint = torch.load(f'{model_name}.pth', map_location=device)
-    model_params = checkpoint['model_params']
-    model = FNO1d(**model_params).to(device)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    return model

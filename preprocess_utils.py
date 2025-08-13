@@ -1,25 +1,74 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
+import warnings
 
-def x_log_transform(x):
+def x_log_transform(x: np.array) -> torch.Tensor:
+    """
+    Applies a double logarithmic transformation to the input array.
+
+    Transforms the input using log(log(1/x)) and returns it as a Torch tensor.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Transformed tensor.
+    """
     return torch.Tensor(np.log(np.log(1/x)))
 
-def x_state_transform(x):
+def x_state_transform(x: np.array) -> torch.Tensor:
+    """
+    Applies a transformation suitable for state normalization.
+
+    Transforms the input using sqrt(log(1e8 * x)) and returns it as a Torch tensor.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Transformed tensor.
+    """
     return torch.Tensor(np.sqrt(np.log(1e8*x)))
 
-def x_heal_transform(x):
+def x_heal_transform(x: np.array) -> torch.Tensor:
+    """
+    Creates a binary mask indicating healing points.
+
+    Compares each value in the input to 1e-8 and marks as 1 if within 1e-12 of that value, else 0.
+
+    Args:
+        x (np.array): Input data.
+
+    Returns:
+        torch.Tensor: Binary mask tensor.
+    """
     return (torch.abs(torch.Tensor(x) - 1e-8) < 1e-12).float()
 
-def prepare_data(data_config, device):
+def prepare_data(config: dict, 
+                 device: torch.device) -> dict:
+    """
+    Loads, normalizes, and prepares the dataset for training and testing.
 
-    feature = np.genfromtxt(data_config['x_path'], delimiter=',')[:, np.newaxis, :]
-    target = np.genfromtxt(data_config['y_path'], delimiter=',')[:, np.newaxis, :]
+    Depending on the config, applies log, state, and/or heal normalization.
+    Also handles loading of pretraining data if specified.
 
-    train_x = feature[:data_config['train_samples'], :, :]
-    train_y = target[:data_config['train_samples'], :, :]
-    test_x = feature[data_config['train_samples']:, :, :]
-    test_y = target[data_config['train_samples']:, :, :]
+    Args:
+        config (dict): Dictionary containing data paths, normalization settings, and training samples.
+        device (torch.device): Device to move tensors to (CPU or GPU).
+
+    Returns:
+        dict: Dictionary containing all processed tensors, datasets, and dataloaders.
+    """
+    
+    print("PREPARING DATA")
+    feature = np.genfromtxt(config['data']['x_path'], delimiter=',')[:, np.newaxis, :]
+    target = np.genfromtxt(config['data']['y_path'], delimiter=',')[:, np.newaxis, :]
+
+    train_x = feature[:config['data']['train_samples'], :, :]
+    train_y = target[:config['data']['train_samples'], :, :]
+    test_x = feature[config['data']['train_samples']:, :, :]
+    test_y = target[config['data']['train_samples']:, :, :]
 
     data = {"train_x": train_x,
             "train_y": train_y,
@@ -29,34 +78,67 @@ def prepare_data(data_config, device):
     train_norm_components = []
     test_norm_components = []
     
-    if data_config['log_norm']:
+    if config['data']['log_norm']:
+        print("\t USING LOG NORM DATA")
         train_x_norm_log = x_log_transform(train_x)
         x_max = train_x_norm_log.max()
         train_x_norm_log /= x_max
         test_x_norm_log = x_log_transform(test_x) / x_max
+        
         train_norm_components.append(train_x_norm_log)
         test_norm_components.append(test_x_norm_log)
         data['train_x_norm_log'] = train_x_norm_log
         data['test_x_norm_log'] = test_x_norm_log
     
-    if data_config['state_norm']:
+    if config['data']['state_norm']:
+        print("\t USING STATE NORM DATA")
         train_x_norm_state = x_state_transform(train_x)
         x_max = train_x_norm_state.max()
         train_x_norm_state /= x_max 
         test_x_norm_state = x_state_transform(test_x) / x_max
+                
         train_norm_components.append(train_x_norm_state)
         test_norm_components.append(test_x_norm_state)
         data['train_x_norm_state'] = train_x_norm_state
         data['test_x_norm_state'] = test_x_norm_state
 
 
-    if data_config['heal_norm']:
+    if config['data']['heal_norm']:
+        print("\t USING HEAL NORM DATA")
         train_x_norm_heal = x_heal_transform(train_x)
         test_x_norm_heal = x_heal_transform(test_x)
+
         train_norm_components.append(train_x_norm_heal)
         test_norm_components.append(test_x_norm_heal)
         data['train_x_norm_heal'] = train_x_norm_state
         data['test_x_norm_heal'] = test_x_norm_state
+
+    if 'pretrain' in config:
+        feature_SO = np.genfromtxt("data/friction_data/features_AgingLaw_NoHealing.csv", delimiter=',')[:, np.newaxis, :]
+        target_SO = np.genfromtxt("data/friction_data/targets_AgingLaw_NoHealing.csv", delimiter=',')[:, np.newaxis, :]
+
+        train_x_SO = feature_SO[:config['data']['train_samples'], :, :]
+        train_y_SO = target_SO[:config['data']['train_samples'], :, :]
+        test_x_SO = feature_SO[config['data']['train_samples']:, :, :]
+        test_y_SO = target_SO[config['data']['train_samples']:, :, :]
+
+        train_x_norm_SO = x_state_transform(train_x_SO)
+        x_max = train_x_norm_SO.max()
+        train_x_norm_SO /= x_max 
+        test_x_norm_SO = x_state_transform(test_x_SO) / x_max
+
+        train_y_norm_SO = torch.Tensor(train_y_SO / train_y_SO.max())
+        test_y_norm_SO = torch.Tensor(test_y_SO / train_y_SO.max())
+
+        train_dataset_SO = TensorDataset(train_x_norm_SO.to(device), train_y_norm_SO.to(device))
+        train_loader_SO = DataLoader(train_dataset_SO, batch_size=32, shuffle=True)
+                
+        data['train_x_norm_SO'] = train_x_norm_SO.to(device)
+        data['test_x_norm_SO'] = test_x_norm_SO.to(device)
+        data['train_y_norm_SO'] = train_y_norm_SO.to(device)
+        data['test_y_norm_SO'] = test_y_norm_SO.to(device)
+        data['train_dataset_SO'] = train_dataset_SO
+        data['train_loader_SO'] = train_loader_SO
 
     train_x_norm = torch.cat(train_norm_components, dim=1)
     test_x_norm = torch.cat(test_norm_components, dim=1)
@@ -76,7 +158,145 @@ def prepare_data(data_config, device):
 
     return data
 
-def combine_with_suffix(heal_params, state_params):
-    heal_with_suffix = {f"{k}_heal": v for k, v in heal_params.items()}
-    state_with_suffix = {f"{k}_state": v for k, v in state_params.items()}
-    return {**heal_with_suffix, **state_with_suffix}
+
+def check_lift_or_decode(name: str, 
+                         block: dict) -> None:
+    """
+    Validates the configuration block for either a 'lift' or 'decode' component.
+
+    Ensures proper specification of NN usage and parameters.
+
+    Args:
+        name (str): Name of the block (used for error messages).
+        block (dict): Configuration dictionary for the block.
+
+    Raises:
+        KeyError: If required keys are missing or incompatible with NN flag.
+    """
+     
+    if "NN" not in block:
+        raise KeyError(f"Missing key 'NN' in {name} config")
+    
+    if block["NN"]:
+        if "NN_params" not in block:
+            raise KeyError(f"Missing 'NN_params' in {name} config while 'NN' is True")
+        for key in ["width", "depth"]:
+            if key not in block["NN_params"]:
+                raise KeyError(f"Missing key '{key}' in {name}['NN_params']")
+    else:
+        if "NN_params" in block:
+            raise KeyError(f"Unexpected 'NN_params' in {name} config while 'NN' is False")
+
+def check_fno_block(name: str, 
+                    fno_block: dict) -> None:
+    """
+    Checks that all required parameters for an FNO block are present.
+
+    Args:
+        name (str): Name of the block (used for error messages).
+        fno_block (dict): Dictionary containing FNO parameters.
+
+    Raises:
+        KeyError: If any required FNO parameter is missing.
+    """
+
+    required_keys = ["mode", "blocks", "act", "width", "padding", "coord_features", "adaptive"]
+    missing = [k for k in required_keys if k not in fno_block]
+    if missing:
+        raise KeyError(f"Missing keys in {name}['fno']: {missing}")
+
+def check_component(name: str, 
+                    comp: dict) -> None:
+    """
+    Validates a model component (e.g., 'heal', 'state', or 'single') by checking its subcomponents.
+
+    Subcomponents include 'fno', 'lift', and 'decode', each with their own structure and validation.
+
+    Args:
+        name (str): Component name for logging and error messages.
+        comp (dict): Dictionary containing 'fno', 'lift', and 'decode' blocks.
+
+    Raises:
+        KeyError: If any expected subcomponent or required parameter is missing.
+    """
+    
+    if "fno" not in comp:
+        raise KeyError(f"Missing 'fno' in {name} config")
+    if "lift" not in comp:
+        raise KeyError(f"Missing 'lift' in {name} config")
+    if "decode" not in comp:
+        raise KeyError(f"Missing 'decode' in {name} config")
+
+    check_fno_block(f"{name}", comp["fno"])
+    check_lift_or_decode(f"{name}['lift']", comp["lift"])
+    check_lift_or_decode(f"{name}['decode']", comp["decode"])
+
+def check_config(config: dict) -> None:
+    """
+    Validates the full configuration dictionary before training.
+
+    Checks:
+        - Data keys and normalization setup.
+        - Training keys.
+        - Model type-specific keys (single or dual).
+        - Pretraining keys if applicable.
+        - Heal and state components for dual models.
+
+    Args:
+        config (dict): Full configuration dictionary.
+
+    Raises:
+        KeyError: If required fields or valid settings are missing.
+        ValueError: If model_type is not 'single' or 'dual'.
+    """
+
+    # --- Data ---
+    if 'data' not in config:
+        raise KeyError("Missing key 'data' used to prepare training and test data")
+    else:
+        required_data_keys = ['x_path', 'y_path', 'train_samples', 'log_norm', 'state_norm', 'heal_norm']
+        missing_data = [k for k in required_data_keys if k not in config['data']]
+        if missing_data:
+            raise KeyError(f"Missing keys in data_config: {missing_data}")
+
+        if not (config['data']['log_norm'] or config['data']['state_norm'] or config['data']['heal_norm']):
+            raise KeyError("At least one type of data normalization must be chosen")
+
+        if config['model_type'] == 'dual':
+            if config['data']['log_norm'] or not (config['data']['state_norm'] and config['data']['heal_norm']):
+                raise KeyError("For a dual model, both state_norm and heal_norm should be used, without log_norm")
+
+    # --- Training ---
+    if 'training' not in config:
+        raise KeyError("Missing key 'training' used to setup training loop")
+    else:
+        required_train_keys = ['lr', 'save_results', 'epochs', 'decay', 'decay_steps']
+        missing_train = [k for k in required_train_keys if k not in config['train']]
+        if missing_train:
+            raise KeyError(f"Missing keys in train_config: {missing_train}")
+
+    # --- Model ---
+    if config['model_type'] == 'single':
+        if 'pretrain' in config:
+            warnings.warn("WARNING: Cannot use pretraining for single FNO model, will simply be ignored")
+
+        check_component("single", config)
+
+    elif config['model_type'] == 'dual':
+        # --- Pretrain ---
+        if 'pretrain' in config:
+            required_pretrain_keys = ["load", "lr", "epochs", "save_results"]
+            missing_pretrain = [k for k in required_pretrain_keys if k not in config["pretrain"]]
+            if missing_pretrain:
+                raise KeyError(f"Missing keys in pretrain config: {missing_pretrain}")
+
+        # --- Heal and State blocks ---
+        if 'heal' not in config:
+            raise KeyError("Missing 'heal' component in dual model config")
+        if 'state' not in config:
+            raise KeyError("Missing 'state' component in dual model config")
+
+        check_component("heal", config["heal"])
+        check_component("state", config["state"])
+    else:
+        raise ValueError("Invalid model_type, must be 'single' or 'dual'")

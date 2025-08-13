@@ -3,6 +3,37 @@ import torch.nn as nn
 import torch.fft
 from typing import Callable, List, Union    
 
+drop = 0.05
+
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.Conv1d):
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
+
+class NeuronWiseActivation(nn.Module):
+    def __init__(self, num_neurons: int, base_activation: nn.Module):
+        """
+            y = activation(a_i * x_i)
+        """
+        super().__init__()
+        self.base_activation = base_activation
+        self.a = nn.Parameter(torch.ones(num_neurons))
+
+    def forward(self, x):
+        # x shape: (B, C, L)
+        if x.dim() == 3:  # (B, C, L)
+            return self.base_activation(self.a.view(1, -1, 1) * x)
+        elif x.dim() == 2:  # (B, features)
+            return self.base_activation(self.a.view(1, -1) * x)
+        else:
+            raise ValueError(f"Unsupported input dimension {x.dim()} in NeuronWiseActivation")
+
 class SpectralConv1d(nn.Module):
     def __init__(self, 
                  in_channels : int, 
@@ -58,7 +89,8 @@ class FNOBlock1d(nn.Module):
                  in_channels : int, 
                  out_channels : int, 
                  modes : int, 
-                 activation : nn.Module = nn.Identity()):
+                 activation : nn.Module = nn.Identity(),
+                 adaptive: bool = False):
         """
         Initializes a single Fourier Neural Operator (FNO) block for 1D data.
 
@@ -70,14 +102,22 @@ class FNOBlock1d(nn.Module):
         """
         
         super().__init__()
-        self.activation = activation
+
+        self.activation = NeuronWiseActivation(out_channels, activation) if adaptive else activation
+
         self.spectral_conv = SpectralConv1d(in_channels, out_channels, modes)
         self.bypass_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
+
+        self.bn = nn.BatchNorm1d(out_channels)
+        self.do = nn.Dropout(drop)
 
     def forward(self, x):
         sc = self.spectral_conv(x)
         bc = self.bypass_conv(x)
         out = sc + bc
+        out = self.bn(out)
+        out = self.activation(out)
+        out = self.do(out)
         return self.activation(out)
 
 class Projection_NN(nn.Module):
@@ -86,7 +126,8 @@ class Projection_NN(nn.Module):
                  output_dim : int, 
                  width : int, 
                  depth : int, 
-                 activation: nn.Module = nn.Identity()):
+                 activation: nn.Module = nn.Identity(),
+                 adaptive: bool = False):
         
         """
         Initializes a fully-connected feedforward projection network.
@@ -100,10 +141,22 @@ class Projection_NN(nn.Module):
         """
         
         super().__init__()
-        layers = [nn.Linear(input_dim, width), activation]
+
+        def make_activation(num_neurons):
+            return NeuronWiseActivation(num_neurons, activation) if adaptive else activation
+        
+        #layers = [nn.Linear(input_dim, width), activation]
+        layers = [nn.Linear(input_dim, width)]
+        layers.append(nn.BatchNorm1d(width))
+        layers.append(make_activation(width))
+        layers.append(nn.Dropout(drop))
+
         for _ in range(depth - 1):
             layers.append(nn.Linear(width, width))
-            layers.append(activation)
+            layers.append(nn.BatchNorm1d(width))
+            layers.append(make_activation(width))
+            layers.append(nn.Dropout(drop))
+
         layers.append(nn.Linear(width, output_dim))
         self.network = nn.Sequential(*layers)
 
@@ -126,12 +179,20 @@ class ConvNet1d(nn.Module):
     def __init__(self, 
                  in_channels: int, 
                  out_channels: int, 
-                 activation: nn.Module = nn.Identity()):
+                 activation: nn.Module = nn.Identity(),
+                 adaptive: bool = False):
         super().__init__()
+
+        def make_activation(num_neurons):
+            return NeuronWiseActivation(num_neurons, activation) if adaptive else activation
+
         self.net = nn.Sequential(
             nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
-            activation,
-            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1)
+            nn.BatchNorm1d(out_channels // 2), 
+            make_activation(out_channels // 2),
+            nn.Dropout(drop),
+            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1),
+            nn.BatchNorm1d(out_channels), 
         )
 
     def forward(self, x):
@@ -148,6 +209,7 @@ class FNO1d(nn.Module):
         n_blocks : int = 4,
         padding : int = 0,
         coord_features : bool = False,
+        adaptive : bool = False,
         lift_activation : nn.Module = nn.Identity(),
         lift_NN : bool = False,
         lift_NN_params : dict = {},
@@ -185,6 +247,7 @@ class FNO1d(nn.Module):
         self.n_blocks = n_blocks
         self.padding = padding
         self.coord_features = coord_features
+        self.adaptive = adaptive
         
         self.lift_activation = lift_activation
         self.lift_NN = lift_NN
@@ -203,10 +266,13 @@ class FNO1d(nn.Module):
                 width = self.lift_NN_params["width"],
                 depth = self.lift_NN_params["depth"],
                 activation = self.lift_activation,
+                adaptive = self.adaptive
             )
         else:
-            self.lift_network = ConvNet1d(self.in_channels, self.width, 
-                                          self.lift_activation)
+            self.lift_network = ConvNet1d(in_channels = self.in_channels, 
+                                          out_channels = self.width, 
+                                          activation = self.lift_activation,
+                                          adaptive = self.adaptive)
             
         if decode_NN:
             self.decode_network = Projection_NN(
@@ -215,16 +281,20 @@ class FNO1d(nn.Module):
                 width = self.decode_NN_params["width"],
                 depth = self.decode_NN_params["depth"],
                 activation = decode_activation,
+                adaptive = self.adaptive
             )
         else:
             self.decode_network = ConvNet1d(self.width,
                                             self.out_channels,
-                                            self.decode_activation)
+                                            self.decode_activation,
+                                            adaptive = self.adaptive)
 
         self.fno_blocks = nn.ModuleList([
-            FNOBlock1d(width, width, modes, block_activation)
+            FNOBlock1d(width, width, modes, block_activation, adaptive)
             for _ in range(n_blocks)
         ])
+
+        self.apply(init_weights)
 
     # x: (B, C, N)
     def forward(self, x):
