@@ -142,7 +142,7 @@ def plots(model: torch.nn.Module, data: dict, device: torch.device) -> None:
         plt.savefig("train_contributions.png", dpi=300, bbox_inches='tight')
         plt.close()
 
-def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_of_dist_x, out_of_dist_y):
+def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_of_dist_x, out_of_dist_y, epochs):
     """
     Creates an interactive training UI for a given model and dataset.
     
@@ -233,7 +233,7 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
             train_loader=train_loader,
             val_x=test_x,
             val_y=test_y,
-            epochs=20,
+            epochs=epochs,
             optimizer=optimizer,
             scheduler=scheduler,
             verbose=False,
