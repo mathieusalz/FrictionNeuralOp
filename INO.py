@@ -48,7 +48,7 @@ class Integral_NO(nn.Module):
 
         # Input to NN will be [batch, 1, length]
         batch = func_x.shape[0]
-        length = func_x.shape[2
+        length = func_x.shape[2]
         # Reshape to get a 2D tensor with shape [batch * length, 1]
         func_x = func_x.repeat(1, 1, length)
         func_x = func_x.permute(0, 2, 1).reshape(-1, 1)

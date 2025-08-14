@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from FNO import FNO1d, dual_FNO
-from postprocess_utils import load_model
+from save_utils import load_model
 import torch.nn.utils as utils
 from typing import Tuple
 from torch.optim.optimizer import Optimizer
@@ -139,11 +139,15 @@ def train_loop(model: nn.Module,
                train_loader: DataLoader,
                val_x: torch.Tensor,
                val_y: torch.Tensor,
+               epochs: int,
                optimizer: Optimizer,
                scheduler: _LRScheduler,
-               epochs: int,
                criterion: nn.modules.loss._Loss = nn.MSELoss(),
-               save_results: bool = True) -> Tuple[list, list]:
+               save_results: bool = True,
+               clip_grad: bool = False,
+               add_noise: bool = False,
+               verbose: bool = False,
+               sample_freq: int = 1) -> Tuple[list, list]:
     """
     Runs the training loop for a specified number of epochs.
 
@@ -174,17 +178,25 @@ def train_loop(model: nn.Module,
         for batch_x, batch_y in train_loader:
             optimizer.zero_grad()
             
-            rand_int = [1,2,3,4][torch.multinomial(torch.Tensor([0.6,0.25,0.10,0.05]), 1).item()]
-            batch_x_down = batch_x[:,:,::rand_int]
             
-            std = torch.rand(1).item() * 0.015
-            noise = torch.randn_like(batch_x_down) * std
-            batch_x_noisy = batch_x_down + noise
-            
-            output = model(batch_x_noisy)
-            loss = criterion(output, batch_y[:,:,::rand_int])
+            if add_noise:
+                rand_int = [1,2,3,4][torch.multinomial(torch.Tensor([0.6,0.25,0.10,0.05]), 1).item()]
+                batch_x_down = batch_x[:,:,::rand_int]
+                
+                std = torch.rand(1).item() * 0.015
+                noise = torch.randn_like(batch_x_down) * std
+                batch_x_noisy = batch_x_down + noise
+                output = model(batch_x_noisy)
+                loss = criterion(output, batch_y[:,:,::rand_int])
+            else:
+                output = model(batch_x[:,:,::sample_freq])
+                loss = criterion(output, batch_y[:,:,::sample_freq])
+
             loss.backward()
-            utils.clip_grad_norm_(model.parameters(), 0.5)
+
+            if clip_grad:
+                utils.clip_grad_norm_(model.parameters(), 0.5)
+
             optimizer.step()
             epoch_loss += loss.item()
             scheduler.step()
@@ -197,6 +209,9 @@ def train_loop(model: nn.Module,
                 val_output = model(val_x)
                 val_loss = criterion(val_output, val_y).item()
                 val_loss_history.append(val_loss)
+
+            if verbose:
+                print(f"EPOCH {epoch}: train_loss: {loss.item():.3e} \t test_loss: {val_loss:.3e}")
 
     return loss_history, val_loss_history
 
@@ -228,7 +243,7 @@ def pretraining(model: nn.Module,
         model.FNO_state = fno_state
 
     else:
-        print(f'\t PRETRAINING for {config['pretrain']['epochs']}')
+        print(f'\t PRETRAINING for {config["pretrain"]["epochs"]}')
         train_loader_state = data['train_loader_SO']
         test_x_state = data['test_x_norm_SO']
         test_y_state = data['test_y_norm_SO']

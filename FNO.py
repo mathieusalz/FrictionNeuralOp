@@ -180,20 +180,24 @@ class ConvNet1d(nn.Module):
                  in_channels: int, 
                  out_channels: int, 
                  activation: nn.Module = nn.Identity(),
-                 adaptive: bool = False):
+                 adaptive: bool = False,
+                 replicate_modulus: bool = False):
         super().__init__()
 
         def make_activation(num_neurons):
             return NeuronWiseActivation(num_neurons, activation) if adaptive else activation
 
-        self.net = nn.Sequential(
-            nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
-            nn.BatchNorm1d(out_channels // 2), 
-            make_activation(out_channels // 2),
-            nn.Dropout(drop),
-            nn.Conv1d(out_channels // 2, out_channels, kernel_size=1),
-            nn.BatchNorm1d(out_channels), 
-        )
+        if replicate_modulus:
+            self.net = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels // 2, kernel_size=1),
+                nn.BatchNorm1d(out_channels // 2), 
+                make_activation(out_channels // 2),
+                nn.Dropout(drop),
+                nn.Conv1d(out_channels // 2, out_channels, kernel_size=1),
+                nn.BatchNorm1d(out_channels), 
+            )
+        else: 
+            self.net = nn.Conv1d(in_channels, out_channels, kernel_size = 1, bias = False)
 
     def forward(self, x):
         return self.net(x)
