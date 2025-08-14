@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from FNO import FNO1d, dual_FNO
 import torch
-from train_utils import train_loop
+from train_utils import train_loop, get_activation
 import torch.optim as optim
 import ipywidgets as widgets
 from IPython.display import display, clear_output
@@ -145,13 +145,6 @@ def plots(model: torch.nn.Module, data: dict, device: torch.device) -> None:
 def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_of_dist_x, out_of_dist_y, epochs):
     """
     Creates an interactive training UI for a given model and dataset.
-    
-    Args:
-        train_x, train_y: Training data
-        test_x, test_y: Validation/testing data
-        out_of_dist_x, out_of_dist_y: Out-of-distribution data
-        train_loop: Function to train the model
-        FNO1d: Model class to instantiate
     """
     # --- Outputs ---
     loss_out = widgets.Output()
@@ -172,7 +165,7 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
         "val_loss_history": None,
         "training": False
     }
-    
+   
     # --- Tab rendering ---
     def render_tab(change=None):
         if state["training"] or state["model"] is None:
@@ -198,12 +191,10 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
             plt.close(fig)
     
     def render_all_tabs():
-        """Render all tabs after training completes"""
         if state["model"] is None:
             return
         for i in range(4):
             render_tab({"new": i})
-
     
     tab.observe(render_tab, names="selected_index")
     
@@ -219,10 +210,14 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
         
         torch.manual_seed(0)
         model = FNO1d(
-            in_channels=1, out_channels=1,
+            in_channels=1,
+            out_channels=1,
             modes=modes_slider.value,
             width=width_slider.value,
-            n_blocks=n_blocks_slider.value
+            n_blocks=n_blocks_slider.value,
+            block_activation=get_activation(block_drop.value),
+            lift_activation=get_activation(lift_drop.value),
+            decode_activation=get_activation(decode_drop.value)
         ).to(device)
         
         optimizer = optim.Adam(model.parameters(), lr=1e-2)
@@ -237,7 +232,7 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
             optimizer=optimizer,
             scheduler=scheduler,
             verbose=False,
-            sample_freq = 4
+            sample_freq=4
         )
         
         state.update({
@@ -259,17 +254,27 @@ def interactive_training_ui(train_loader, train_x, train_y, test_x, test_y, out_
         value=8, description="Width:", continuous_update=False
     )
     n_blocks_slider = widgets.SelectionSlider(
-        options=[1, 2, 4, 8], value=1, description="Blocks:", continuous_update=False
+        options=[1, 2, 4, 8],
+        value=1, description="Blocks:", continuous_update=False
     )
+    sliders_row = widgets.HBox([modes_slider, width_slider, n_blocks_slider])
+
+    # --- Activation dropdowns ---
+    act_options = ['None', 'gelu', 'silu', 'relu', 'tanh']
+    block_drop = widgets.Dropdown(options=act_options, value='None', description='Block Act:')
+    lift_drop = widgets.Dropdown(options=act_options, value='None', description='Lift Act:')
+    decode_drop = widgets.Dropdown(options=act_options, value='None', description='Decode Act:')
     
-    ui = widgets.HBox([modes_slider, width_slider, n_blocks_slider])
+    dropdowns_row = widgets.HBox([block_drop, lift_drop, decode_drop])
+
+    ui = widgets.VBox([sliders_row, dropdowns_row])
     
     # --- Initial training ---
     train_model()
     
-    # --- Attach slider observers ---
-    for slider in [modes_slider, width_slider, n_blocks_slider]:
-        slider.observe(train_model, names='value')
+    # --- Attach observers ---
+    for ctrl in [modes_slider, width_slider, n_blocks_slider, block_drop, lift_drop, decode_drop]:
+        ctrl.observe(train_model, names='value')
     
     display(ui, tab)
 

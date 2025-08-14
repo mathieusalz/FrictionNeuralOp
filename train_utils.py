@@ -33,6 +33,8 @@ def get_activation(act_name: str) -> nn.Module:
         return nn.LeakyReLU()
     elif act_name == 'tanh':
         return nn.Tanh()
+    elif act_name == 'none':
+        return nn.Identity()
     # Add more activations as needed
     else:
         raise ValueError(f"Unknown activation function '{act_name}' specified in config.")

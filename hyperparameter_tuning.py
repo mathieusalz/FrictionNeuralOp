@@ -5,7 +5,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from train_utils import train_model
 from preprocess_utils import prepare_data, combine_with_suffix
 
-
+# TO DO - fix to match with actual way of configuring a friction model
 def objective_dual(trial,data):
     training_settings = {"model_type": 'dual',
                          "pretrain": False,

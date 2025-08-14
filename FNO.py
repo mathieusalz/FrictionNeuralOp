@@ -197,7 +197,8 @@ class ConvNet1d(nn.Module):
                 nn.BatchNorm1d(out_channels), 
             )
         else: 
-            self.net = nn.Conv1d(in_channels, out_channels, kernel_size = 1, bias = False)
+            self.net = nn.Sequential(nn.Conv1d(in_channels, out_channels, kernel_size = 1, bias = False),
+                                     activation)
 
     def forward(self, x):
         return self.net(x)
