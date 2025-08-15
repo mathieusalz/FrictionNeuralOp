@@ -28,7 +28,7 @@ def save_config_as_text(config: dict, path: str) -> None:
 
 def save_model(model: torch.nn.Module, name: str = 'model') -> None:
     """
-    Save the model's state dictionary and relevant initialization parameters to a file.
+    Save the model's state dictionary and all relevant initialization parameters to a file.
 
     Args:
         model (torch.nn.Module): The model to save.
@@ -37,19 +37,25 @@ def save_model(model: torch.nn.Module, name: str = 'model') -> None:
     torch.save({
         'model_state_dict': model.state_dict(),
         'model_params': {
-            'in_channels': model.in_channels,
+            'in_channels': model.in_channels - (1 if model.coord_features else 0),  # undo coord feature adjustment
             'out_channels': model.out_channels,
             'modes': model.modes,
             'width': model.width,
             'block_activation': model.block_activation,
-            'lifting_activation': model.lifting_activation,
             'n_blocks': model.n_blocks,
             'padding': model.padding,
-            'NN': model.NN,
-            'NN_params': model.NN_params if model.NN else None,
-            'bias': model.lifting.bias is not None if not model.NN else False,
+            'coord_features': model.coord_features,
+            'adaptive': model.adaptive,
+            'lift_activation': model.lift_activation,
+            'lift_NN': model.lift_NN,
+            'lift_NN_params': model.lift_NN_params if model.lift_NN else None,
+            'decode_activation': model.decode_activation,
+            'decode_NN': getattr(model, 'decode_NN', False),
+            'decode_NN_params': getattr(model, 'decode_NN_params', None) if getattr(model, 'decode_NN', False) else None
         }
     }, f'{name}.pth')
+
+
 
 def load_model(model_name: str, device: torch.device) -> torch.nn.Module:
     """
@@ -62,7 +68,8 @@ def load_model(model_name: str, device: torch.device) -> torch.nn.Module:
     Returns:
         torch.nn.Module: The loaded model instance.
     """    
-    checkpoint = torch.load(f'{model_name}.pth', map_location=device)
+
+    checkpoint = torch.load(f'{model_name}.pth', map_location=device, weights_only=False)
     model_params = checkpoint['model_params']
     model = FNO1d(**model_params).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
