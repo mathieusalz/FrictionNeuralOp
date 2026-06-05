@@ -147,8 +147,8 @@ def train_loop(model: nn.Module,
                criterion: nn.modules.loss._Loss = nn.MSELoss(),
                save_results: bool = True,
                clip_grad: bool = False,
-               add_noise: bool = False,
-               verbose: bool = False,
+               add_noise: bool = True,
+               verbose: bool = True,
                sample_freq: int = 1) -> Tuple[list, list]:
     """
     Runs the training loop for a specified number of epochs.
@@ -208,6 +208,7 @@ def train_loop(model: nn.Module,
             
             model.eval()
             with torch.no_grad():
+
                 val_output = model(val_x)
                 val_loss = criterion(val_output, val_y).item()
                 val_loss_history.append(val_loss)
@@ -307,14 +308,14 @@ def train_model(config: dict,
     else: 
         optimizer = optim.Adam(model.parameters(), lr=lr)
         
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=make_decay_fn(data['train']['decay'], data['train']['steps']))
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=make_decay_fn(config['train']['decay'], config['train']['decay_steps']))
 
     loss_history, val_loss_history = [], []
     train_loader, test_x, test_y = data['train_loader'], data['test_x_norm'], data['test_y_norm']
 
-    loss_history, val_loss_history = train_loop(model, train_loader, test_x, test_y,
-                                                optimizer, scheduler, config['train']['epochs'], 
-                                                criterion, config['train']['save_results'])
+    loss_history, val_loss_history = train_loop(model = model, train_loader = train_loader, val_x = test_x, val_y = test_y,
+                                                optimizer = optimizer, scheduler = scheduler, epochs = config['train']['epochs'], 
+                                                criterion = criterion, save_results = config['train']['save_results'])
 
     data['loss_history'] = loss_history
     data['val_loss_history'] = val_loss_history

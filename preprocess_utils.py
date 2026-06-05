@@ -267,7 +267,7 @@ def check_config(config: dict) -> None:
                 raise KeyError("For a dual model, both state_norm and heal_norm should be used, without log_norm")
 
     # --- Training ---
-    if 'training' not in config:
+    if 'train' not in config:
         raise KeyError("Missing key 'training' used to setup training loop")
     else:
         required_train_keys = ['lr', 'save_results', 'epochs', 'decay', 'decay_steps']

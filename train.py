@@ -40,7 +40,7 @@ train_config = {'lr': 1e-3,
                 'decay': 0.9,
                 'decay_steps': 1000,
                 'save_results': True,
-                'epochs': 100}
+                'epochs': 2}
 
 # dual_config = {"model_type": 'dual',
 #           "data": data_config,
@@ -61,7 +61,9 @@ single_config = {'model_type': 'single',
           "train": train_config,
           "lift": lift_config,
           "fno": fno_config,
-          "decode": decode_config}
+          "decode": decode_config,
+          'data': data_config}
+
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
